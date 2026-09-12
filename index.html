@@ -1,0 +1,1172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Blackout Protocol</title>
+<style>
+  :root{
+    --night:#05070B;
+    --steel:#161B22;
+    --gridline:#2B3648;
+    --amber:#FF9E1B;
+    --plasma:#7C5CFF;
+    --cyan:#33E1FF;
+    --alert:#FF2E43;
+    --restored:#FFE9B8;
+    --text:#EAF0F6;
+    --textdim:#6E7A8A;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--night);color:var(--text);}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    min-height:100vh;
+    overflow-x:hidden;
+    -webkit-user-select:none;user-select:none;touch-action:manipulation;
+  }
+  @media (max-height:520px){
+    .screen{padding:14px!important;gap:12px!important;}
+    .brand{font-size:clamp(22px,6vw,34px)!important;}
+    .rules{font-size:12px!important;line-height:1.5!important;}
+  }
+  .title-font{
+    font-stretch:condensed;
+    letter-spacing:-0.01em;
+    font-weight:800;
+    text-transform:uppercase;
+    font-family:"Arial Narrow",-apple-system,"Segoe UI",sans-serif;
+  }
+  .mono{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-variant-numeric:tabular-nums;
+  }
+  .label{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    text-transform:uppercase;
+    letter-spacing:0.15em;
+    font-size:10px;
+    color:var(--textdim);
+  }
+  #app{width:100%;max-width:900px;margin:0 auto;position:relative;}
+  .screen{width:100%;min-height:100vh;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;}
+  [hidden]{display:none!important;}
+
+  /* BLACKOUT TRANSITION */
+  #blackout{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity 0.4s ease;z-index:50;}
+  #blackout.show{opacity:1;}
+
+  /* START SCREEN */
+  #screen-start{gap:22px;text-align:center;position:relative;overflow:hidden;}
+  #bgcanvas{position:absolute;inset:0;width:100%;height:100%;z-index:0;}
+  #screen-start > *:not(#bgcanvas){position:relative;z-index:1;}
+  .brand{font-size:clamp(34px,7vw,58px);color:var(--text);line-height:1;animation:flicker 4s infinite;}
+  @keyframes flicker{
+    0%,92%,100%{text-shadow:0 0 18px rgba(255,158,32,0.0);}
+    93%{text-shadow:0 0 22px rgba(255,158,32,0.55);}
+    94%{text-shadow:0 0 4px rgba(255,158,32,0.1);}
+    95%{text-shadow:0 0 26px rgba(51,225,255,0.5);}
+    96%{text-shadow:0 0 4px rgba(255,158,32,0.1);}
+  }
+  .brand-sub{font-size:12px;letter-spacing:0.2em;color:var(--amber);text-transform:uppercase;}
+  .panel{
+    background:rgba(22,27,34,0.92);
+    border:1px solid var(--gridline);
+    clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px));
+    padding:18px 22px;
+    backdrop-filter:blur(2px);
+  }
+  .btn{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    text-transform:uppercase;
+    letter-spacing:0.1em;
+    font-size:13px;
+    font-weight:700;
+    color:var(--night);
+    background:var(--amber);
+    border:none;
+    padding:12px 28px;
+    cursor:pointer;
+    clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px));
+  }
+  .btn:active{filter:brightness(0.85);}
+  .btn.secondary{background:var(--gridline);color:var(--text);}
+  .rules{max-width:480px;color:var(--textdim);font-size:13px;line-height:1.7;text-align:left;}
+  .rules b{color:var(--text);}
+  .keys{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px;}
+  .key{
+    font-family:ui-monospace,monospace;font-size:11px;color:var(--cyan);
+    border:1px solid var(--gridline);padding:3px 8px;
+  }
+
+  /* GAME SCREEN */
+  #screen-game{padding:10px;gap:8px;}
+  .hud{
+    width:100%;max-width:720px;display:flex;justify-content:space-between;align-items:center;
+    padding:8px 12px;background:var(--steel);border:1px solid var(--gridline);
+  }
+  .hud .mono{font-size:15px;}
+  .hud .amber{color:var(--amber);}
+  .hud .alert{color:var(--alert);}
+  .hud .cyan{color:var(--cyan);}
+  .map-wrap{width:100%;max-width:720px;aspect-ratio:12/7;position:relative;border:1px solid var(--gridline);background:var(--night);}
+  canvas{width:100%;height:100%;display:block;}
+  .bottombar{
+    width:100%;max-width:720px;display:flex;gap:8px;background:var(--steel);border:1px solid var(--gridline);
+    padding:8px;align-items:stretch;
+  }
+  .unitbtn{
+    flex:1;background:var(--night);border:1px solid var(--gridline);color:var(--text);
+    padding:8px 4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;
+    transition:border-color 0.15s, box-shadow 0.15s;
+  }
+  .unitbtn.active{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan) inset, 0 0 10px rgba(51,225,255,0.35);}
+  .unitbtn .swatch{width:16px;height:16px;border-radius:2px;}
+  .unitbtn .uname{font-size:10px;letter-spacing:0.05em;text-transform:uppercase;}
+  .unitbtn .ucost{font-family:ui-monospace,monospace;font-size:12px;color:var(--amber);}
+  .unitbtn .ukey{font-size:9px;color:var(--textdim);}
+  .wavebtn{
+    flex:1 1 110px;min-width:0;background:var(--amber);color:var(--night);
+    font-family:ui-monospace,monospace;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;
+    font-size:11px;border:none;cursor:pointer;padding:8px 6px;white-space:normal;line-height:1.2;
+  }
+  .wavebtn.paused{background:var(--cyan);}
+  .upgradebar{width:100%;max-width:720px;background:var(--steel);border:1px solid var(--gridline);padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  .upgradebar .info{font-size:12px;color:var(--textdim);}
+  .upgradebar .info b{color:var(--text);}
+
+  /* NIGHT INTRO SCREEN */
+  #screen-nightintro{gap:18px;text-align:center;}
+  .nightnum{font-size:clamp(48px,10vw,84px);color:var(--cyan);text-shadow:0 0 30px rgba(51,225,255,0.45);animation:pulseNight 1.6s ease-in-out infinite;}
+  @keyframes pulseNight{0%,100%{opacity:0.75;}50%{opacity:1;}}
+
+  /* END SCREENS */
+  .endpanel{gap:14px;text-align:center;}
+  .endpanel .panel{width:320px;}
+  .score-line{display:flex;justify-content:space-between;gap:14px;font-size:13px;color:var(--textdim);}
+  .score-line span{flex:1 1 auto;}
+  .score-line b{flex:0 0 auto;text-align:right;color:var(--text);font-family:ui-monospace,monospace;}
+  .final-score{font-size:34px;color:var(--restored);}
+  #screen-defeat .final-score{color:var(--alert);}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="blackout"></div>
+
+  <div id="screen-start" class="screen">
+    <canvas id="bgcanvas"></canvas>
+    <div class="brand title-font">Blackout Protocol</div>
+    <div class="panel rules">
+      <div class="label" style="margin-bottom:8px;">Briefing</div>
+      A city-wide power failure is spreading. Restore and defend the grid's five districts
+      across <b>5 nights</b> and <b>25 waves</b>. Lose 3 districts and the city goes dark for good.
+      <br><br>
+      <b>Controls</b> — click/tap a marked tile to build. Press <span class="key">1</span> Rapid Relay,
+      <span class="key">2</span> Zone Transformer, <span class="key">3</span> Stabilizer, then place it.
+      <span class="key">Space</span> starts or pauses a wave. <span class="key">Esc</span> cancels a selection.
+      Building is only possible before a wave starts.
+    </div>
+    <button class="btn" id="btn-start">Start</button>
+  </div>
+
+  <div id="screen-game" class="screen" hidden>
+    <div class="hud">
+      <span class="mono">NIGHT <span id="hud-night">1</span> // WAVE <span id="hud-wave">1</span>-5</span>
+      <span class="mono amber">CREDITS <span id="hud-credits">150</span></span>
+      <span class="mono" id="hud-districts">DISTRICTS 5/5</span>
+    </div>
+    <div class="map-wrap">
+      <canvas id="canvas"></canvas>
+    </div>
+    <div class="bottombar" id="build-bar">
+      <button class="unitbtn" data-unit="relay">
+        <div class="swatch" style="background:var(--amber);"></div>
+        <div class="uname">Relay</div>
+        <div class="ucost mono">40</div>
+        <div class="ukey">KEY 1</div>
+      </button>
+      <button class="unitbtn" data-unit="zone">
+        <div class="swatch" style="background:var(--plasma);"></div>
+        <div class="uname">Transformer</div>
+        <div class="ucost mono">90</div>
+        <div class="ukey">KEY 2</div>
+      </button>
+      <button class="unitbtn" data-unit="stab">
+        <div class="swatch" style="background:var(--cyan);"></div>
+        <div class="uname">Stabilizer</div>
+        <div class="ucost mono">70</div>
+        <div class="ukey">KEY 3</div>
+      </button>
+      <button class="wavebtn" id="btn-wave">Start Wave</button>
+    </div>
+    <div class="upgradebar" id="upgrade-bar" hidden>
+      <div class="info" id="upgrade-info">—</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn secondary" id="btn-upgrade">Upgrade</button>
+        <button class="btn secondary" id="btn-deselect">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-nightintro" class="screen" hidden>
+    <div class="label">Incoming</div>
+    <div class="nightnum title-font">NIGHT <span id="ni-num">2</span></div>
+    <div class="rules" style="text-align:center;max-width:360px;">Grid load is increasing. Incidents will spawn faster, hit harder, and come in greater numbers.</div>
+    <button class="btn" id="btn-night-continue">Begin Night</button>
+  </div>
+
+  <div id="screen-victory" class="screen endpanel" hidden>
+    <div class="brand title-font" style="font-size:34px;">Blackout Protocol</div>
+    <div class="label">City restored</div>
+    <div class="final-score mono" id="v-score">0</div>
+    <div class="panel">
+      <div class="score-line"><span>Incidents neutralized</span><b id="v-inc">0</b></div>
+      <div class="score-line"><span>Districts saved</span><b id="v-saved">0</b></div>
+      <div class="score-line"><span>Time bonus</span><b id="v-time">0</b></div>
+      <div class="score-line"><span>Perfect waves</span><b id="v-perfect">0</b></div>
+      <div class="score-line"><span>District penalty</span><b id="v-penalty">0</b></div>
+      <div class="score-line" style="margin-top:8px;border-top:1px solid var(--gridline);padding-top:8px;"><span>Best score</span><b id="v-best">0</b></div>
+    </div>
+    <button class="btn" id="btn-replay-v">Play Again</button>
+  </div>
+
+  <div id="screen-defeat" class="screen endpanel" hidden>
+    <div class="brand title-font" style="font-size:34px;">Blackout Protocol</div>
+    <div class="label" style="color:var(--alert);">Sector offline</div>
+    <div class="final-score mono" id="d-score">0</div>
+    <div class="panel">
+      <div class="score-line"><span>Night reached</span><b id="d-night">1</b></div>
+      <div class="score-line"><span>Incidents neutralized</span><b id="d-inc">0</b></div>
+      <div class="score-line"><span>Districts saved</span><b id="d-saved">0</b></div>
+      <div class="score-line" style="margin-top:8px;border-top:1px solid var(--gridline);padding-top:8px;"><span>Best score</span><b id="d-best">0</b></div>
+    </div>
+    <button class="btn" id="btn-replay-d">Play Again</button>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- CONFIG ----------
+  var TILE = 56;
+  var COLS = 12, ROWS = 7;
+
+  var PATH = [
+    {c:0,r:1},{c:1,r:1},{c:2,r:1},{c:3,r:1},{c:4,r:1},{c:5,r:1},
+    {c:5,r:2},{c:5,r:3},{c:5,r:4},
+    {c:6,r:4},{c:7,r:4},{c:8,r:4},{c:9,r:4},{c:10,r:4},{c:11,r:4}
+  ];
+  var PATH_MAX_T = PATH.length - 1; // 14
+
+  var BUILDABLE = [
+    [0,0],[0,2],[1,0],[1,2],[2,0],[2,2],[3,0],[3,2],[4,0],[4,2],
+    [5,0],[6,1],[6,2],[4,3],[6,3],[5,5],[4,4],[6,5],[7,3],[7,5],
+    [8,3],[8,5],[9,3],[9,5],[10,3],[10,5],[11,3],[11,5]
+  ];
+  var BUILDABLE_SET = {};
+  BUILDABLE.forEach(function(p){ BUILDABLE_SET[p[0]+","+p[1]] = true; });
+
+  var CHECKPOINTS = [3,6,9,12,PATH_MAX_T]; // t-thresholds for districts 1-5
+
+  var TOWERS = {
+    relay: {
+      name:"Rapid Relay", key:"1", cost:40, color:"var(--amber)", colorHex:"#FF9E1B", kind:"single",
+      levels:[
+        {damage:1, range:2, rate:0.5},
+        {damage:1, range:3, rate:0.35, upgradeCost:60},
+        {damage:2, range:3, rate:0.25, upgradeCost:100}
+      ]
+    },
+    zone: {
+      name:"Zone Transformer", key:"2", cost:90, color:"var(--plasma)", colorHex:"#7C5CFF", kind:"area",
+      levels:[
+        {damage:1, range:1.5, rate:1.0},
+        {damage:1, range:2.0, rate:1.0, upgradeCost:120},
+        {damage:2, range:2.5, rate:1.0, upgradeCost:180}
+      ]
+    },
+    stab: {
+      name:"Stabilizer", key:"3", cost:70, color:"var(--cyan)", colorHex:"#33E1FF", kind:"slow",
+      levels:[
+        {slow:0.35, range:2.5},
+        {slow:0.5, range:2.5, upgradeCost:90},
+        {slow:0.65, range:3, upgradeCost:140}
+      ]
+    }
+  };
+
+  var INCIDENTS = {
+    surge:   {name:"Surge",   hp:1, speed:1.3, reward:8,  color:"#FFFFFF"},
+    short:   {name:"Short-Circuit", hp:2, speed:1.0, reward:12, color:"#FF6B6B"},
+    cascade: {name:"Cascading Outage", hp:3, speed:0.7, reward:15, color:"#9AA6B6"},
+    sabotage:{name:"Sabotage", hp:5, speed:1.0, reward:25, color:"#FF2E43"}
+  };
+
+  var TOTAL_NIGHTS = 5;
+  var WAVES_PER_NIGHT = 5;
+  var NIGHT_TIME_BUDGET = 120;
+  var START_CREDITS = 150;
+  var TOTAL_DISTRICTS = 5;
+  var MAX_DISTRICT_LOSSES = 3;
+  var END_ANIM_DURATION = 1.5;
+
+  // ---------- STATE ----------
+  var S = {};
+  function resetState(){
+    S.credits = START_CREDITS;
+    S.night = 1;
+    S.waveInNight = 1;
+    S.districts = [];
+    for (var i=0;i<TOTAL_DISTRICTS;i++) S.districts.push({hits:3, dark:false});
+    S.districtsLost = 0;
+    S.towers = {}; // key "c,r" -> tower
+    S.incidents = [];
+    S.phase = "build"; // build | wave | nightintro | victoryanim | defeatanim | victory | defeat
+    S.paused = false;
+    S.selectedUnit = null;
+    S.selectedTowerKey = null;
+    S.spawnQueue = 0;
+    S.spawnTimer = 0;
+    S.waveHadHit = false;
+    S.nightActiveSeconds = 0;
+    S.incidentsNeutralized = 0;
+    S.perfectWaves = 0;
+    S.timeRemainingSum = 0;
+    S.fx = [];
+    S.hoverTile = null;
+    S.endAnimStart = 0;
+  }
+  resetState();
+  var CLOCK = 0; // free-running ambient clock, always advances
+
+  // ---------- DOM ----------
+  var screens = {
+    start: document.getElementById("screen-start"),
+    game: document.getElementById("screen-game"),
+    nightintro: document.getElementById("screen-nightintro"),
+    victory: document.getElementById("screen-victory"),
+    defeat: document.getElementById("screen-defeat")
+  };
+  function showScreen(name){
+    Object.keys(screens).forEach(function(k){ screens[k].hidden = (k!==name); });
+  }
+  var blackoutEl = document.getElementById("blackout");
+  function blackoutTransition(cb){
+    blackoutEl.classList.add("show");
+    setTimeout(function(){
+      cb();
+      setTimeout(function(){ blackoutEl.classList.remove("show"); }, 60);
+    }, 420);
+  }
+
+  var canvas = document.getElementById("canvas");
+  canvas.width = COLS*TILE;
+  canvas.height = ROWS*TILE;
+  var ctx = canvas.getContext("2d");
+
+  var bgcanvas = document.getElementById("bgcanvas");
+  var bgctx = bgcanvas.getContext("2d");
+
+  var hudNight = document.getElementById("hud-night");
+  var hudWave = document.getElementById("hud-wave");
+  var hudCredits = document.getElementById("hud-credits");
+  var hudDistricts = document.getElementById("hud-districts");
+  var buildBar = document.getElementById("build-bar");
+  var upgradeBar = document.getElementById("upgrade-bar");
+  var upgradeInfo = document.getElementById("upgrade-info");
+  var btnWave = document.getElementById("btn-wave");
+
+  // ---------- HELPERS ----------
+  function tileCenter(c,r){ return {x:c*TILE+TILE/2, y:r*TILE+TILE/2}; }
+  function isBuildable(c,r){ return !!BUILDABLE_SET[c+","+r]; }
+  function towerKey(c,r){ return c+","+r; }
+  function addFx(fx){ fx.born = CLOCK; S.fx.push(fx); }
+
+  function pathPos(t){
+    if (t<=0) return tileCenter(PATH[0].c,PATH[0].r);
+    if (t>=PATH_MAX_T) return tileCenter(PATH[PATH_MAX_T].c,PATH[PATH_MAX_T].r);
+    var i = Math.floor(t), f = t-i;
+    var a = tileCenter(PATH[i].c,PATH[i].r);
+    var b = tileCenter(PATH[i+1].c,PATH[i+1].r);
+    return {x:a.x+(b.x-a.x)*f, y:a.y+(b.y-a.y)*f};
+  }
+
+  function mergedStats(type, level){
+    var t = TOWERS[type];
+    var m = {};
+    for (var i=0;i<=level;i++){
+      var lv = t.levels[i];
+      for (var k in lv){ if (k!=="upgradeCost") m[k]=lv[k]; }
+    }
+    return m;
+  }
+
+  function nightHpMult(n){ return 1 + (n-1)*0.2; }
+  function nightSpeedMult(n){ return 1 + (n-1)*0.1; }
+  function incidentsCountForWave(night,wave){ return 3+night+Math.floor(wave/2); }
+  function spawnIntervalForNight(night){ return Math.max(0.8, 1.2-0.05*(night-1)); }
+
+  function pickIncidentType(night){
+    var pool = ["surge","surge","short","short","cascade"];
+    if (night>=4) pool.push("sabotage");
+    return pool[Math.floor(Math.random()*pool.length)];
+  }
+
+  // ---------- BUILD / UPGRADE ----------
+  function selectUnit(type){
+    if (S.phase!=="build") return;
+    S.selectedTowerKey = null;
+    S.selectedUnit = (S.selectedUnit===type) ? null : type;
+    refreshBars();
+  }
+
+  function cancelSelection(){
+    S.selectedUnit = null;
+    S.selectedTowerKey = null;
+    refreshBars();
+  }
+
+  function placeTower(c,r){
+    if (S.phase!=="build" || !S.selectedUnit) return;
+    if (!isBuildable(c,r)) return;
+    var key = towerKey(c,r);
+    if (S.towers[key]) return;
+    var cfg = TOWERS[S.selectedUnit];
+    if (S.credits < cfg.cost) return;
+    S.credits -= cfg.cost;
+    S.towers[key] = {type:S.selectedUnit, level:0, c:c, r:r, cooldown:0};
+    var pos = tileCenter(c,r);
+    addFx({type:"upgrade", x:pos.x, y:pos.y, life:0.5, color:cfg.colorHex});
+    S.selectedUnit = null;
+    refreshBars();
+  }
+
+  function selectTowerAt(c,r){
+    if (S.phase!=="build") return;
+    var key = towerKey(c,r);
+    if (!S.towers[key]) return;
+    S.selectedUnit = null;
+    S.selectedTowerKey = key;
+    refreshBars();
+  }
+
+  function upgradeSelectedTower(){
+    if (S.phase!=="build" || !S.selectedTowerKey) return;
+    var tw = S.towers[S.selectedTowerKey];
+    if (!tw) return;
+    var nextLevel = tw.level+1;
+    if (nextLevel>2) return;
+    var cfg = TOWERS[tw.type];
+    var cost = cfg.levels[nextLevel].upgradeCost;
+    if (S.credits < cost) return;
+    S.credits -= cost;
+    tw.level = nextLevel;
+    var pos = tileCenter(tw.c,tw.r);
+    addFx({type:"upgrade", x:pos.x, y:pos.y, life:0.6, color:cfg.colorHex});
+    refreshBars();
+  }
+
+  function refreshBars(){
+    hudCredits.textContent = S.credits;
+    hudNight.textContent = Math.min(S.night, TOTAL_NIGHTS);
+    hudWave.textContent = S.waveInNight;
+    var lit = TOTAL_DISTRICTS - S.districtsLost;
+    hudDistricts.textContent = "DISTRICTS "+lit+"/"+TOTAL_DISTRICTS;
+    hudDistricts.className = "mono " + (lit<=2 ? "alert" : (lit<=4 ? "amber" : "cyan"));
+
+    Array.prototype.forEach.call(buildBar.querySelectorAll(".unitbtn"), function(btn){
+      btn.classList.toggle("active", S.selectedUnit===btn.getAttribute("data-unit"));
+    });
+
+    if (S.selectedTowerKey && S.towers[S.selectedTowerKey]){
+      var tw = S.towers[S.selectedTowerKey];
+      var cfg = TOWERS[tw.type];
+      buildBar.hidden = true;
+      upgradeBar.hidden = false;
+      if (tw.level>=2){
+        upgradeInfo.innerHTML = "<b>"+cfg.name+"</b> — level 2 (max)";
+        document.getElementById("btn-upgrade").disabled = true;
+      } else {
+        var cost = cfg.levels[tw.level+1].upgradeCost;
+        upgradeInfo.innerHTML = "<b>"+cfg.name+"</b> — level "+tw.level+" &rarr; "+(tw.level+1)+" ("+cost+" cr)";
+        document.getElementById("btn-upgrade").disabled = (S.credits<cost);
+      }
+    } else {
+      buildBar.hidden = (S.phase==="victoryanim" || S.phase==="defeatanim");
+      upgradeBar.hidden = true;
+    }
+
+    btnWave.textContent = S.phase==="wave" ? (S.paused?"Resume Wave":"Pause Wave") : "Start Wave";
+    btnWave.classList.toggle("paused", S.phase==="wave" && S.paused);
+  }
+
+  // ---------- WAVE FLOW ----------
+  function startWave(){
+    if (S.phase!=="build") return;
+    S.phase = "wave";
+    S.paused = false;
+    S.selectedUnit = null;
+    S.selectedTowerKey = null;
+    S.spawnQueue = incidentsCountForWave(S.night, S.waveInNight);
+    S.spawnTimer = 0;
+    S.waveHadHit = false;
+    refreshBars();
+  }
+
+  function togglePause(){
+    if (S.phase!=="wave") { startWave(); return; }
+    S.paused = !S.paused;
+    refreshBars();
+  }
+
+  function districtHit(idx){
+    var d = S.districts[idx];
+    if (d.dark) return;
+    d.hits--;
+    S.waveHadHit = true;
+    var pos = pathPos(CHECKPOINTS[idx]);
+    addFx({type:"districthit", x:pos.x, y:pos.y, life:0.35});
+    if (d.hits<=0){
+      d.dark = true;
+      S.districtsLost++;
+      addFx({type:"districtdark", x:pos.x, y:pos.y, life:0.9});
+      if (S.districtsLost>=MAX_DISTRICT_LOSSES){
+        S.phase = "defeatanim";
+        S.endAnimStart = CLOCK;
+      }
+    }
+  }
+
+  function neutralize(inc){
+    inc.alive = false;
+    S.credits += inc.reward;
+    S.incidentsNeutralized++;
+    var pos = pathPos(inc.t);
+    addFx({type:"death", x:pos.x, y:pos.y, life:0.4, color:INCIDENTS[inc.type].color});
+  }
+
+  function completeWave(){
+    if (S.waveHadHit===false) S.perfectWaves++;
+    S.waveInNight++;
+    if (S.waveInNight>WAVES_PER_NIGHT){
+      var remaining = Math.max(0, NIGHT_TIME_BUDGET - S.nightActiveSeconds);
+      S.timeRemainingSum += remaining;
+      S.nightActiveSeconds = 0;
+      S.night++;
+      S.waveInNight = 1;
+      if (S.night>TOTAL_NIGHTS){
+        S.phase = "victoryanim";
+        S.endAnimStart = CLOCK;
+        return;
+      }
+      document.getElementById("ni-num").textContent = S.night;
+      S.phase = "nightintro";
+      showScreen("nightintro");
+      return;
+    }
+    S.phase = "build";
+    refreshBars();
+  }
+
+  function computeScore(){
+    var saved = TOTAL_DISTRICTS - S.districtsLost;
+    var score = S.incidentsNeutralized*10 + saved*100 + S.timeRemainingSum*2 + S.perfectWaves*50 - S.districtsLost*150;
+    return Math.max(0, Math.round(score));
+  }
+
+  var BEST_KEY = "blackoutProtocolBestScore";
+  function getBest(){ try{ return parseInt(localStorage.getItem(BEST_KEY)||"0",10); }catch(e){ return 0; } }
+  function setBest(v){ try{ localStorage.setItem(BEST_KEY, String(v)); }catch(e){} }
+
+  function triggerVictory(){
+    S.phase = "victory";
+    var score = computeScore();
+    var best = Math.max(score, getBest());
+    setBest(best);
+    document.getElementById("v-score").textContent = score;
+    document.getElementById("v-inc").textContent = S.incidentsNeutralized;
+    document.getElementById("v-saved").textContent = (TOTAL_DISTRICTS-S.districtsLost)+"/"+TOTAL_DISTRICTS;
+    document.getElementById("v-time").textContent = "+"+Math.round(S.timeRemainingSum*2);
+    document.getElementById("v-perfect").textContent = "+"+(S.perfectWaves*50);
+    document.getElementById("v-penalty").textContent = "-"+(S.districtsLost*150);
+    document.getElementById("v-best").textContent = best;
+    showScreen("victory");
+  }
+
+  function triggerDefeat(){
+    S.phase = "defeat";
+    var score = computeScore();
+    var best = Math.max(score, getBest());
+    setBest(best);
+    document.getElementById("d-score").textContent = score;
+    document.getElementById("d-night").textContent = S.night;
+    document.getElementById("d-inc").textContent = S.incidentsNeutralized;
+    document.getElementById("d-saved").textContent = (TOTAL_DISTRICTS-S.districtsLost)+"/"+TOTAL_DISTRICTS;
+    document.getElementById("d-best").textContent = best;
+    showScreen("defeat");
+  }
+
+  // ---------- GAME LOOP ----------
+  var lastTs = null;
+  function loop(ts){
+    if (lastTs===null) lastTs = ts;
+    var dt = Math.min(0.2, (ts-lastTs)/1000);
+    lastTs = ts;
+    CLOCK += dt;
+
+    if (!screens.start.hidden){
+      renderStartBG(dt);
+    }
+    if (!screens.game.hidden){
+      if (S.phase==="wave" && !S.paused){
+        update(dt);
+      } else if (S.phase==="victoryanim" || S.phase==="defeatanim"){
+        if (CLOCK - S.endAnimStart >= END_ANIM_DURATION){
+          if (S.phase==="victoryanim") triggerVictory(); else triggerDefeat();
+        }
+      }
+      render();
+    }
+    requestAnimationFrame(loop);
+  }
+
+  function update(dt){
+    S.nightActiveSeconds += dt;
+
+    // spawn
+    if (S.spawnQueue>0){
+      S.spawnTimer -= dt;
+      if (S.spawnTimer<=0){
+        var type = pickIncidentType(S.night);
+        var base = INCIDENTS[type];
+        S.incidents.push({
+          type:type,
+          hp: base.hp*nightHpMult(S.night),
+          baseSpeed: base.speed*nightSpeedMult(S.night),
+          t:0,
+          charged:[false,false,false,false,false],
+          slowFactor:1,
+          reward: base.reward,
+          alive:true,
+          spawnT: CLOCK
+        });
+        S.spawnQueue--;
+        S.spawnTimer = spawnIntervalForNight(S.night);
+      }
+    }
+
+    // stabilizer slow fields
+    var stabs = [];
+    for (var k in S.towers){
+      if (S.towers[k].type==="stab") stabs.push(S.towers[k]);
+    }
+    S.incidents.forEach(function(inc){
+      if (!inc.alive) return;
+      inc.slowFactor = 1;
+      var pos = pathPos(inc.t);
+      stabs.forEach(function(tw){
+        var stats = mergedStats("stab", tw.level);
+        var cp = tileCenter(tw.c, tw.r);
+        var dist = Math.hypot(cp.x-pos.x, cp.y-pos.y)/TILE;
+        if (dist<=stats.range){
+          inc.slowFactor = Math.min(inc.slowFactor, 1-stats.slow);
+        }
+      });
+    });
+
+    // move + checkpoints
+    S.incidents.forEach(function(inc){
+      if (!inc.alive) return;
+      inc.t += inc.baseSpeed*inc.slowFactor*dt;
+      for (var i=0;i<CHECKPOINTS.length;i++){
+        if (!inc.charged[i] && inc.t>=CHECKPOINTS[i]){
+          inc.charged[i] = true;
+          districtHit(i);
+        }
+      }
+      if (inc.t>=PATH_MAX_T){
+        inc.alive = false; // reached the core, breach resolved via last checkpoint
+      }
+    });
+
+    if (S.phase!=="wave") { // a defeat may have fired mid-loop
+      S.incidents = S.incidents.filter(function(inc){ return inc.alive; });
+      refreshBars();
+      return;
+    }
+
+    // towers fire
+    for (var k2 in S.towers){
+      var tw = S.towers[k2];
+      if (tw.type==="stab") continue;
+      var stats = mergedStats(tw.type, tw.level);
+      var origin = tileCenter(tw.c, tw.r);
+      tw.cooldown -= dt;
+      if (tw.cooldown>0) continue;
+
+      if (tw.type==="relay"){
+        var target = null, bestT = -1;
+        S.incidents.forEach(function(inc){
+          if (!inc.alive) return;
+          var pos = pathPos(inc.t);
+          var dist = Math.hypot(origin.x-pos.x, origin.y-pos.y)/TILE;
+          if (dist<=stats.range && inc.t>bestT){ bestT = inc.t; target = inc; }
+        });
+        if (target){
+          var tpos = pathPos(target.t);
+          addFx({type:"shot", x1:origin.x, y1:origin.y, x2:tpos.x, y2:tpos.y, life:0.15, color:TOWERS.relay.colorHex});
+          addFx({type:"impact", x:tpos.x, y:tpos.y, life:0.25, color:TOWERS.relay.colorHex});
+          target.hp -= stats.damage;
+          tw.cooldown = stats.rate;
+          if (target.hp<=0) neutralize(target);
+        }
+      } else if (tw.type==="zone"){
+        var hitAny = false;
+        S.incidents.forEach(function(inc){
+          if (!inc.alive) return;
+          var pos = pathPos(inc.t);
+          var dist = Math.hypot(origin.x-pos.x, origin.y-pos.y)/TILE;
+          if (dist<=stats.range){
+            inc.hp -= stats.damage;
+            hitAny = true;
+            if (inc.hp<=0) neutralize(inc);
+          }
+        });
+        if (hitAny){
+          tw.cooldown = stats.rate;
+          addFx({type:"zonepulse", x:origin.x, y:origin.y, life:0.45, radius:stats.range*TILE, color:TOWERS.zone.colorHex});
+        }
+      }
+    }
+
+    S.incidents = S.incidents.filter(function(inc){ return inc.alive; });
+
+    if (S.phase==="wave" && S.spawnQueue===0 && S.incidents.length===0){
+      completeWave();
+    }
+    refreshBars();
+  }
+
+  // ---------- RENDER: START BACKGROUND ----------
+  var glyphPool = ["SECT-04","GRID-B","NODE-12","0x2F1A","LINE-07","RELAY-3","PWR-88","SIG-LOST","GRID-A","NODE-05","CH-11","FEED-02"];
+  var glyphs = [];
+  var scanY = 0;
+  var lastGlyphSpawn = 0;
+  function resizeBgCanvas(){
+    var rect = screens.start.getBoundingClientRect();
+    bgcanvas.width = Math.max(1, Math.round(rect.width));
+    bgcanvas.height = Math.max(1, Math.round(rect.height));
+  }
+  window.addEventListener("resize", resizeBgCanvas);
+  resizeBgCanvas();
+
+  function renderStartBG(dt){
+    var w = bgcanvas.width, h = bgcanvas.height;
+    bgctx.fillStyle = "#05070B";
+    bgctx.fillRect(0,0,w,h);
+
+    // moving technical grid
+    var spacing = 34;
+    var offset = (CLOCK*10) % spacing;
+    bgctx.strokeStyle = "rgba(43,54,72,0.55)";
+    bgctx.lineWidth = 1;
+    for (var x=-spacing; x<w+spacing; x+=spacing){
+      bgctx.beginPath(); bgctx.moveTo(x+offset, 0); bgctx.lineTo(x+offset-40, h); bgctx.stroke();
+    }
+    for (var y=0; y<h+spacing; y+=spacing){
+      bgctx.beginPath(); bgctx.moveTo(0, y+ (offset*0.4)%spacing); bgctx.lineTo(w, y+(offset*0.4)%spacing); bgctx.stroke();
+    }
+
+    // scanline sweep
+    scanY = (CLOCK*70) % (h+120) - 60;
+    var grad = bgctx.createLinearGradient(0, scanY-40, 0, scanY+40);
+    grad.addColorStop(0, "rgba(51,225,255,0)");
+    grad.addColorStop(0.5, "rgba(51,225,255,0.10)");
+    grad.addColorStop(1, "rgba(51,225,255,0)");
+    bgctx.fillStyle = grad;
+    bgctx.fillRect(0, scanY-40, w, 80);
+
+    // glyph blips
+    if (CLOCK - lastGlyphSpawn > 0.7 && glyphs.length<6){
+      lastGlyphSpawn = CLOCK;
+      glyphs.push({
+        text: glyphPool[Math.floor(Math.random()*glyphPool.length)],
+        x: 20+Math.random()*(w-120),
+        y: 20+Math.random()*(h-40),
+        born: CLOCK
+      });
+    }
+    bgctx.font = "10px ui-monospace, monospace";
+    glyphs = glyphs.filter(function(g){
+      var age = CLOCK-g.born, life = 2.2;
+      if (age>life) return false;
+      var alpha = age<0.3 ? age/0.3 : (age>life-0.6 ? Math.max(0,(life-age)/0.6) : 1);
+      bgctx.fillStyle = "rgba(110,122,138,"+(alpha*0.8).toFixed(2)+")";
+      bgctx.fillText(g.text, g.x, g.y);
+      return true;
+    });
+
+    // ambient brightness flicker
+    var flick = 0.03 + 0.02*Math.sin(CLOCK*3.1) + (Math.random()<0.01 ? 0.08 : 0);
+    bgctx.fillStyle = "rgba(234,240,246,"+flick.toFixed(3)+")";
+    bgctx.fillRect(0,0,w,h);
+
+    // vignette depth
+    var vgrad = bgctx.createRadialGradient(w/2,h*0.45,h*0.1,w/2,h*0.45,h*0.75);
+    vgrad.addColorStop(0,"rgba(0,0,0,0)");
+    vgrad.addColorStop(1,"rgba(0,0,0,0.55)");
+    bgctx.fillStyle = vgrad;
+    bgctx.fillRect(0,0,w,h);
+  }
+
+  // ---------- RENDER: GAME ----------
+  function render(){
+    ctx.fillStyle = "#05070B";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    // grid
+    ctx.strokeStyle = "#161B22";
+    ctx.lineWidth = 1;
+    for (var c=0;c<=COLS;c++){
+      ctx.beginPath(); ctx.moveTo(c*TILE,0); ctx.lineTo(c*TILE,ROWS*TILE); ctx.stroke();
+    }
+    for (var r=0;r<=ROWS;r++){
+      ctx.beginPath(); ctx.moveTo(0,r*TILE); ctx.lineTo(COLS*TILE,r*TILE); ctx.stroke();
+    }
+
+    // buildable tiles
+    ctx.strokeStyle = "#2B3648";
+    ctx.setLineDash([4,3]);
+    BUILDABLE.forEach(function(p){
+      var key = p[0]+","+p[1];
+      if (S.towers[key]) return;
+      ctx.strokeRect(p[0]*TILE+4, p[1]*TILE+4, TILE-8, TILE-8);
+    });
+    ctx.setLineDash([]);
+
+    // hover preview
+    if (S.phase==="build" && S.selectedUnit && S.hoverTile){
+      var hk = S.hoverTile.c+","+S.hoverTile.r;
+      if (isBuildable(S.hoverTile.c,S.hoverTile.r) && !S.towers[hk]){
+        var cfg = TOWERS[S.selectedUnit];
+        var hp = tileCenter(S.hoverTile.c,S.hoverTile.r);
+        ctx.globalAlpha = 0.35 + 0.15*Math.sin(CLOCK*6);
+        ctx.fillStyle = cfg.colorHex;
+        ctx.fillRect(hp.x-TILE/2+6, hp.y-TILE/2+6, TILE-12, TILE-12);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // path
+    var pathDim = (S.phase==="defeatanim") ? Math.max(0, 1-(CLOCK-S.endAnimStart)/END_ANIM_DURATION) : 1;
+    ctx.strokeStyle = S.phase==="victoryanim" ? "#2B3648" : "#2B3648";
+    ctx.globalAlpha = pathDim;
+    ctx.lineWidth = TILE*0.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    PATH.forEach(function(p,i){
+      var pos = tileCenter(p.c,p.r);
+      if (i===0) ctx.moveTo(pos.x,pos.y); else ctx.lineTo(pos.x,pos.y);
+    });
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // victory relight sweep along the path
+    if (S.phase==="victoryanim"){
+      var vp = Math.min(1,(CLOCK-S.endAnimStart)/END_ANIM_DURATION);
+      ctx.strokeStyle = "#FFE9B8";
+      ctx.globalAlpha = 0.9;
+      ctx.lineWidth = TILE*0.5;
+      ctx.beginPath();
+      var upto = vp*PATH_MAX_T;
+      for (var pi=0; pi<PATH.length; pi++){
+        if (pi> upto+1) break;
+        var pos2 = tileCenter(PATH[pi].c, PATH[pi].r);
+        if (pi===0) ctx.moveTo(pos2.x,pos2.y); else ctx.lineTo(pos2.x,pos2.y);
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    // sector labels
+    ctx.fillStyle = "#6E7A8A";
+    ctx.font = "9px ui-monospace, monospace";
+    for (var sc=0; sc<COLS; sc+=3){
+      ctx.fillText("S"+sc, sc*TILE+3, 10);
+    }
+
+    // districts (idle pulse + hit/dark reactions)
+    CHECKPOINTS.forEach(function(t,i){
+      var pos = pathPos(t);
+      var d = S.districts[i];
+      var frac = Math.max(0,d.hits)/3;
+      var relit = S.phase==="victoryanim" ? Math.min(1,(CLOCK-S.endAnimStart)/END_ANIM_DURATION) : 0;
+      var pulse = d.dark ? 0 : (Math.sin(CLOCK*2.2 + i*1.3)*0.5+0.5);
+      var baseColor = d.dark ? "#2B3648" : lerpColor("#FF2E43","#FFE9B8", Math.max(frac,relit));
+      var radius = 10 + (d.dark?0:pulse*1.6);
+      ctx.beginPath();
+      ctx.arc(pos.x,pos.y,radius+4,0,Math.PI*2);
+      ctx.fillStyle = d.dark ? "rgba(0,0,0,0)" : "rgba(255,233,184,"+(0.08+pulse*0.10)+")";
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(pos.x,pos.y,radius,0,Math.PI*2);
+      ctx.fillStyle = baseColor;
+      ctx.fill();
+      ctx.strokeStyle = "#EAF0F6";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+
+    // towers
+    for (var k in S.towers){
+      var tw = S.towers[k];
+      var cfg2 = TOWERS[tw.type];
+      var pos3 = tileCenter(tw.c,tw.r);
+      var size = 10 + tw.level*4;
+
+      if (tw.type==="zone"){
+        var statsPerm = mergedStats("zone",tw.level);
+        ctx.beginPath();
+        ctx.arc(pos3.x,pos3.y,statsPerm.range*0.35*TILE,0,Math.PI*2);
+        ctx.fillStyle = "rgba(124,92,255,0.12)";
+        ctx.fill();
+      }
+      if (tw.type==="stab"){
+        var sstats = mergedStats("stab", tw.level);
+        var ringR1 = 8 + (CLOCK*14)%14;
+        var ringR2 = 8 + ((CLOCK*14)+9)%14;
+        ctx.strokeStyle = "rgba(51,225,255,0.35)";
+        ctx.setLineDash([3,4]);
+        ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.arc(pos3.x,pos3.y,ringR1,0,Math.PI*2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(pos3.x,pos3.y,ringR2, Math.PI*0.3, Math.PI*2.1); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      if (S.selectedTowerKey===k){
+        var st = mergedStats(tw.type, tw.level);
+        var rad = (st.range!==undefined ? st.range : 0)*TILE;
+        ctx.beginPath();
+        ctx.arc(pos3.x,pos3.y,rad,0,Math.PI*2);
+        ctx.strokeStyle = cfg2.colorHex;
+        ctx.globalAlpha = 0.6;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+
+      ctx.fillStyle = cfg2.colorHex;
+      if (tw.type==="relay"){
+        ctx.fillRect(pos3.x-size/2,pos3.y-size/2,size,size);
+      } else if (tw.type==="zone"){
+        ctx.beginPath();
+        ctx.arc(pos3.x,pos3.y,size/1.6,0,Math.PI*2);
+        ctx.fill();
+      } else {
+        drawHex(pos3.x,pos3.y,size/1.6);
+      }
+    }
+
+    // incidents (spawn scale-in)
+    S.incidents.forEach(function(inc){
+      var pos = pathPos(inc.t);
+      var base = INCIDENTS[inc.type];
+      var age = CLOCK-(inc.spawnT||0);
+      var scale = age<0.25 ? Math.max(0.2,age/0.25) : 1;
+      var alpha = age<0.25 ? scale : 1;
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      ctx.arc(pos.x,pos.y,5*scale,0,Math.PI*2);
+      ctx.fillStyle = base.color;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+
+    // fx layer
+    renderFx();
+
+    // paused overlay
+    if (S.phase==="wave" && S.paused){
+      ctx.fillStyle = "rgba(5,7,11,0.55)";
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = "#EAF0F6";
+      ctx.font = "bold 20px ui-monospace, monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("PAUSED", canvas.width/2, canvas.height/2);
+      ctx.textAlign = "left";
+    }
+
+    // defeat darken overlay
+    if (S.phase==="defeatanim"){
+      var dp = Math.min(1,(CLOCK-S.endAnimStart)/END_ANIM_DURATION);
+      ctx.fillStyle = "rgba(0,0,0,"+(dp*0.85)+")";
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+    }
+  }
+
+  function renderFx(){
+    S.fx = S.fx.filter(function(fx){
+      var age = CLOCK - fx.born;
+      if (age > fx.life) return false;
+      var p = age/fx.life;
+      if (fx.type==="shot"){
+        ctx.strokeStyle = fx.color;
+        ctx.globalAlpha = 1-p;
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(fx.x1,fx.y1); ctx.lineTo(fx.x2,fx.y2); ctx.stroke();
+        ctx.globalAlpha = 1;
+      } else if (fx.type==="impact"){
+        ctx.strokeStyle = fx.color;
+        ctx.globalAlpha = 1-p;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(fx.x,fx.y, 3+p*6, 0, Math.PI*2); ctx.stroke();
+        ctx.globalAlpha = 1;
+      } else if (fx.type==="zonepulse"){
+        ctx.strokeStyle = fx.color;
+        ctx.globalAlpha = (1-p)*0.8;
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(fx.x,fx.y, p*fx.radius, 0, Math.PI*2); ctx.stroke();
+        ctx.globalAlpha = 1;
+      } else if (fx.type==="death"){
+        ctx.strokeStyle = fx.color;
+        ctx.globalAlpha = 1-p;
+        ctx.lineWidth = 1.5;
+        for (var a=0;a<4;a++){
+          var ang = a*Math.PI/2 + p*1.5;
+          var rr = 3+p*10;
+          ctx.beginPath();
+          ctx.moveTo(fx.x+Math.cos(ang)*2, fx.y+Math.sin(ang)*2);
+          ctx.lineTo(fx.x+Math.cos(ang)*rr, fx.y+Math.sin(ang)*rr);
+          ctx.stroke();
+        }
+        ctx.beginPath(); ctx.arc(fx.x,fx.y,2+p*6,0,Math.PI*2); ctx.stroke();
+        ctx.globalAlpha = 1;
+      } else if (fx.type==="districthit"){
+        ctx.strokeStyle = "#EAF0F6";
+        ctx.globalAlpha = 1-p;
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(fx.x,fx.y, 8+p*16, 0, Math.PI*2); ctx.stroke();
+        ctx.globalAlpha = 1;
+      } else if (fx.type==="districtdark"){
+        ctx.strokeStyle = "#FF2E43";
+        ctx.globalAlpha = (1-p)*0.9;
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(fx.x,fx.y, 6+p*34, 0, Math.PI*2); ctx.stroke();
+        ctx.globalAlpha = 1;
+      } else if (fx.type==="upgrade"){
+        ctx.strokeStyle = fx.color;
+        ctx.globalAlpha = 1-p;
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(fx.x,fx.y, 4+p*20, 0, Math.PI*2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(fx.x,fx.y, 4+p*12, 0, Math.PI*2); ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      return true;
+    });
+  }
+
+  function drawHex(x,y,r){
+    ctx.beginPath();
+    for (var i=0;i<6;i++){
+      var ang = Math.PI/3*i - Math.PI/2;
+      var px = x+r*Math.cos(ang), py = y+r*Math.sin(ang);
+      if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function lerpColor(a,b,t){
+    var ca = hexToRgb(a), cb = hexToRgb(b);
+    var r = Math.round(ca.r+(cb.r-ca.r)*t);
+    var g = Math.round(ca.g+(cb.g-ca.g)*t);
+    var bl = Math.round(ca.b+(cb.b-ca.b)*t);
+    return "rgb("+r+","+g+","+bl+")";
+  }
+  function hexToRgb(hex){
+    var v = parseInt(hex.slice(1),16);
+    return {r:(v>>16)&255, g:(v>>8)&255, b:v&255};
+  }
+
+  // ---------- INPUT ----------
+  function canvasToTile(clientX, clientY){
+    var rect = canvas.getBoundingClientRect();
+    var scaleX = canvas.width/rect.width;
+    var scaleY = canvas.height/rect.height;
+    var x = (clientX-rect.left)*scaleX;
+    var y = (clientY-rect.top)*scaleY;
+    return {c:Math.floor(x/TILE), r:Math.floor(y/TILE)};
+  }
+
+  canvas.addEventListener("pointerdown", function(e){
+    if (S.phase!=="build") return;
+    var t = canvasToTile(e.clientX, e.clientY);
+    if (t.c<0||t.c>=COLS||t.r<0||t.r>=ROWS) return;
+    var key = towerKey(t.c,t.r);
+    if (S.towers[key]){
+      selectTowerAt(t.c,t.r);
+    } else if (S.selectedUnit){
+      placeTower(t.c,t.r);
+    }
+  });
+  canvas.addEventListener("pointermove", function(e){
+    var t = canvasToTile(e.clientX, e.clientY);
+    S.hoverTile = (t.c>=0&&t.c<COLS&&t.r>=0&&t.r<ROWS) ? t : null;
+  });
+  canvas.addEventListener("pointerleave", function(){ S.hoverTile = null; });
+
+  Array.prototype.forEach.call(buildBar.querySelectorAll(".unitbtn"), function(btn){
+    btn.addEventListener("click", function(){ selectUnit(btn.getAttribute("data-unit")); });
+  });
+  document.getElementById("btn-upgrade").addEventListener("click", upgradeSelectedTower);
+  document.getElementById("btn-deselect").addEventListener("click", cancelSelection);
+  btnWave.addEventListener("click", togglePause);
+
+  document.getElementById("btn-night-continue").addEventListener("click", function(){
+    showScreen("game");
+    S.phase = "build";
+    refreshBars();
+  });
+
+  window.addEventListener("keydown", function(e){
+    if (screens.game.hidden) return;
+    if (e.key==="1") selectUnit("relay");
+    else if (e.key==="2") selectUnit("zone");
+    else if (e.key==="3") selectUnit("stab");
+    else if (e.key===" "){ e.preventDefault(); togglePause(); }
+    else if (e.key==="Escape") cancelSelection();
+  });
+
+  // ---------- FLOW ----------
+  document.getElementById("btn-start").addEventListener("click", function(){
+    resetState();
+    blackoutTransition(function(){
+      showScreen("game");
+      refreshBars();
+    });
+  });
+  document.getElementById("btn-replay-v").addEventListener("click", function(){
+    resetState();
+    blackoutTransition(function(){
+      showScreen("game");
+      refreshBars();
+    });
+  });
+  document.getElementById("btn-replay-d").addEventListener("click", function(){
+    resetState();
+    blackoutTransition(function(){
+      showScreen("game");
+      refreshBars();
+    });
+  });
+
+  refreshBars();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
