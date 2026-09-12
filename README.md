@@ -41,7 +41,9 @@ An earlier draft of this project's documentation wrongly claimed a Zone Transfor
 
 Only combinations whose total cost exceeds 150 are actually impossible. The code enforces exactly this (a purchase is refused only when `credits < cost`, nothing else) and was verified live: attempting a Relay after a Relay+Zone build (130 spent, 20cr left, Relay costs 40) was correctly refused for insufficient funds, while Relay+Zone itself (130 ≤ 150) was correctly allowed.
 
-## A real bug found and fixed this session: Start button unreachable
+## A real bug found and fixed this session: Start button unreachable — now validated
+
+The Start/Commencer button fix described below is now validated across viewport sizes.
 
 While testing responsiveness, the animated background canvas on the start screen turned out to **not** behave as a true background. A CSS specificity conflict (`#screen-start > *` had the same specificity as `#bgcanvas` and came later in the stylesheet, so it silently overrode the canvas's `position:absolute` with `position:relative`) made the canvas a real flex-layout item that pushed the title, briefing, and **Start button below the visible viewport on every screen size** — the exact "Start button inaccessible" failure this brief warned against. Fixed by scoping the override to `#screen-start > *:not(#bgcanvas)`. Re-verified after the fix at 1600×900, 1024×480, 812×375 (phone landscape), 768×1024 (tablet), and 375×812 (phone portrait) — title, briefing, and Start button are all visible and reachable at every size, with natural page scroll available (not blocked) if a window is ever shorter than the content.
 
@@ -72,13 +74,34 @@ While testing responsiveness, the animated background canvas on the start screen
 
 - **Real touch input on a physical phone or tablet** was not tested — this environment cannot simulate genuine multi-touch hardware events. The code uses `pointerdown`/`pointermove` listeners, which unify mouse and touch in every modern browser, and the layout was verified to fit and remain legible at phone/tablet viewport sizes, but an actual finger-on-glass test is still outstanding and should be done by you before considering mobile support fully proven.
 - **Clicking via simulated coordinates at the tablet preset (768×1024)** repeatedly failed to register in this specific sandboxed preview tool during testing, even though `elementFromPoint` confirmed the button was correctly on top and reachable, and a later retry (after switching away and back) succeeded normally. This looks like a transient input-timing quirk of the preview tool itself, not of the page — the same tablet layout was separately confirmed visually correct, and clicking worked normally at every other tested size (including phone preset and default desktop). Flagging this rather than papering over it.
-- **A physical camera/screen recording of a session has not been made** — no video was created, per your explicit instruction; you will record the final video yourself once you've validated the game.
+- **No video has been created yet.** The final demonstration video will be produced separately by Chatty after the game is fully validated — it is not something either Claude or the user needs to record.
 - Landscape phone gameplay was checked for layout and scroll-reachability of the controls, but a full wave was not played to completion in that specific orientation (only in portrait and desktop orientations was a full wave/night/victory played).
 
 ## Remaining limits
 
 - Real `localStorage` persistence across a full close-and-reopen of a normal (non-sandboxed) browser was not independently re-verified this session — the read/write code itself is unchanged from the previous session (already wrapped in `try/catch` so a storage failure never breaks the end screen), and it did display "Best score" correctly after each win/loss this session, but a true cross-session persistence check on your own machine is worth doing once before final sign-off.
-- No video, per instruction — that step is explicitly yours.
+- No video has been created. The final demonstration video will be made separately by Chatty after the game is validated.
+
+## Publishing — GitHub and Vercel, both independent
+
+**GitHub**: new independent repository, created with `gh repo create`, no connection to any prior repo.
+- Repository name requested: `Blackout Protocol`. GitHub normalizes spaces in repo names, so the real name is **`Blackout-Protocol`**, exactly as this brief anticipated.
+- Live link: **https://github.com/KenMMStudio/Blackout-Protocol** — contains `Blackout-Protocol`, as required.
+- Verified this session: the repository contains exactly three files — `index.html`, `fr/index.html`, `README.md` — confirmed both via local `git ls-files` and via the GitHub API (`repos/.../contents`). No other file, no old commit, no shared history.
+
+**Vercel**: new independent project, created with `vercel --prod`, connected only to the `Blackout-Protocol` GitHub repo above (Vercel connected it automatically on first deploy) — not to any prior Vercel project.
+- Project name requested: `Blackout Protocol`. Vercel normalizes spaces/case, so the real project name is **`blackout-protocol`** (under the account's `ken-mms-tudio` team scope), exactly as this brief anticipated.
+- Live production link: **https://blackout-protocol-ten.vercel.app** — contains `blackout-protocol`, as required.
+- Verified live this session, from the actual deployed URL (not a local file):
+  1. GitHub repo confirmed separate — see above.
+  2. `Blackout-Protocol` appears in the GitHub link — confirmed.
+  3. Vercel project confirmed separate (new project `blackout-protocol`, not added to any existing project).
+  4. `blackout-protocol` appears in the Vercel link — confirmed.
+  5. English version loads and is playable from `https://blackout-protocol-ten.vercel.app/` — clicked Start, reached the game screen (Night 1, 150 credits, map rendered).
+  6. French version loads and is playable from `https://blackout-protocol-ten.vercel.app/fr/` — clicked Commencer, reached the game screen (Nuit 1, 150 crédits, carte rendue).
+  7. Both versions confirmed startable and playable directly from the live deployment, not just from local files.
+
+No link above is fabricated — each was produced directly by the `gh` and `vercel` CLI output and re-checked with a live HTTP request (`200` on both `/` and `/fr/`) and a real click-through in the browser.
 
 ## Proofs available
 
