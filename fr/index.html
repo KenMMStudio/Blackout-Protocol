@@ -57,7 +57,7 @@
   #blackout.show{opacity:1;}
 
   /* START SCREEN */
-  #screen-start{gap:22px;text-align:center;position:relative;overflow:hidden;}
+  #screen-start{gap:18px;text-align:center;position:relative;overflow:hidden;}
   #bgcanvas{position:absolute;inset:0;width:100%;height:100%;z-index:0;}
   #screen-start > *:not(#bgcanvas){position:relative;z-index:1;}
   .brand{font-size:clamp(34px,7vw,58px);color:var(--text);line-height:1;animation:flicker 4s infinite;}
@@ -91,6 +91,7 @@
   }
   .btn:active{filter:brightness(0.85);}
   .btn.secondary{background:var(--gridline);color:var(--text);}
+  .btnrow{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
   .rules{max-width:480px;color:var(--textdim);font-size:13px;line-height:1.7;text-align:left;}
   .rules b{color:var(--text);}
   .keys{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px;}
@@ -111,6 +112,18 @@
   .hud .cyan{color:var(--cyan);}
   .map-wrap{width:100%;max-width:720px;aspect-ratio:12/7;position:relative;border:1px solid var(--gridline);background:var(--night);}
   canvas{width:100%;height:100%;display:block;}
+
+  /* TUTORIAL COACHMARK */
+  #tutorial-box{
+    width:100%;max-width:720px;background:rgba(22,27,34,0.96);border:1px solid var(--cyan);
+    padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;
+    box-shadow:0 0 16px rgba(51,225,255,0.25);
+  }
+  #tutorial-box.flash{animation:tutFlash 0.3s ease;}
+  @keyframes tutFlash{0%,100%{border-color:var(--cyan);}50%{border-color:var(--alert);}}
+  #tutorial-text{font-size:13px;color:var(--text);line-height:1.4;}
+  #tutorial-text b{color:var(--cyan);}
+
   .bottombar{
     width:100%;max-width:720px;display:flex;gap:8px;background:var(--steel);border:1px solid var(--gridline);
     padding:8px;align-items:stretch;
@@ -121,8 +134,9 @@
     transition:border-color 0.15s, box-shadow 0.15s;
   }
   .unitbtn.active{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan) inset, 0 0 10px rgba(51,225,255,0.35);}
+  .unitbtn.coach{border-color:var(--cyan);box-shadow:0 0 0 2px var(--cyan) inset, 0 0 14px rgba(51,225,255,0.55);}
   .unitbtn .swatch{width:16px;height:16px;border-radius:2px;}
-  .unitbtn .uname{font-size:10px;letter-spacing:0.05em;text-transform:uppercase;}
+  .unitbtn .uname{font-size:9.5px;letter-spacing:0.03em;text-transform:uppercase;}
   .unitbtn .ucost{font-family:ui-monospace,monospace;font-size:12px;color:var(--amber);}
   .unitbtn .ukey{font-size:9px;color:var(--textdim);}
   .wavebtn{
@@ -131,6 +145,7 @@
     font-size:11px;border:none;cursor:pointer;padding:8px 6px;white-space:normal;line-height:1.2;
   }
   .wavebtn.paused{background:var(--cyan);}
+  .wavebtn.coach{box-shadow:0 0 0 3px var(--cyan);}
   .upgradebar{width:100%;max-width:720px;background:var(--steel);border:1px solid var(--gridline);padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px;}
   .upgradebar .info{font-size:12px;color:var(--textdim);}
   .upgradebar .info b{color:var(--text);}
@@ -160,16 +175,18 @@
     <div class="brand title-font">Blackout Protocol</div>
     <div class="panel rules">
       <div class="label" style="margin-bottom:8px;">Briefing</div>
-      Une panne électrique générale se propage dans la ville. Rétablis et défends les cinq
-      quartiers du réseau pendant <b>5 nuits</b> et <b>25 vagues</b>. Perds 3 quartiers et la ville
-      retombe définitivement dans le noir.
+      Une panne électrique générale se propage dans la ville. Rétablis et défends les cinq quartiers du réseau
+      pendant <b>5 nuits</b> et <b>25 vagues</b>. Perds 3 quartiers et la ville retombe définitivement dans le noir.
       <br><br>
-      <b>Contrôles</b> — clique ou touche une case marquée pour construire. Appuie sur <span class="key">1</span> Relais rapide,
+      <b>Contrôles</b> — clique ou touche une case qui brille pour construire. Appuie sur <span class="key">1</span> Relais rapide,
       <span class="key">2</span> Transformateur de zone, <span class="key">3</span> Stabilisateur, puis place l'unité.
       <span class="key">Espace</span> lance ou met en pause une vague. <span class="key">Échap</span> annule une sélection.
       La construction n'est possible qu'avant le début d'une vague.
     </div>
-    <button class="btn" id="btn-start">Commencer</button>
+    <div class="btnrow">
+      <button class="btn" id="btn-start">Commencer</button>
+      <button class="btn secondary" id="btn-howto">Comment jouer</button>
+    </div>
   </div>
 
   <div id="screen-game" class="screen" hidden>
@@ -181,24 +198,28 @@
     <div class="map-wrap">
       <canvas id="canvas"></canvas>
     </div>
+    <div id="tutorial-box" hidden>
+      <div id="tutorial-text">—</div>
+      <button class="btn secondary" id="tutorial-continue" hidden>Continuer</button>
+    </div>
     <div class="bottombar" id="build-bar">
       <button class="unitbtn" data-unit="relay">
         <div class="swatch" style="background:var(--amber);"></div>
-        <div class="uname">Relais</div>
+        <div class="uname">Relais rapide</div>
         <div class="ucost mono">40</div>
-        <div class="ukey">TOUCHE 1</div>
+        <div class="ukey">KEY 1</div>
       </button>
       <button class="unitbtn" data-unit="zone">
         <div class="swatch" style="background:var(--plasma);"></div>
-        <div class="uname">Transfo</div>
+        <div class="uname">Transfo. de zone</div>
         <div class="ucost mono">90</div>
-        <div class="ukey">TOUCHE 2</div>
+        <div class="ukey">KEY 2</div>
       </button>
       <button class="unitbtn" data-unit="stab">
         <div class="swatch" style="background:var(--cyan);"></div>
         <div class="uname">Stabilisateur</div>
         <div class="ucost mono">70</div>
-        <div class="ukey">TOUCHE 3</div>
+        <div class="ukey">KEY 3</div>
       </button>
       <button class="wavebtn" id="btn-wave">Lancer la vague</button>
     </div>
@@ -252,7 +273,7 @@
 (function(){
   "use strict";
 
-  // ---------- CONFIG ----------
+  // ---------- CONFIG (locked rules — unchanged numbers) ----------
   var TILE = 56;
   var COLS = 12, ROWS = 7;
 
@@ -271,11 +292,11 @@
   var BUILDABLE_SET = {};
   BUILDABLE.forEach(function(p){ BUILDABLE_SET[p[0]+","+p[1]] = true; });
 
-  var CHECKPOINTS = [3,6,9,12,PATH_MAX_T]; // seuils t pour les districts 1-5
+  var CHECKPOINTS = [3,6,9,12,PATH_MAX_T]; // t-thresholds for districts 1-5
 
   var TOWERS = {
     relay: {
-      name:"Relais rapide", key:"1", cost:40, color:"var(--amber)", colorHex:"#FF9E1B", kind:"single",
+      name:"Relais rapide", key:"1", cost:40, colorHex:"#FF9E1B", kind:"single",
       levels:[
         {damage:1, range:2, rate:0.5},
         {damage:1, range:3, rate:0.35, upgradeCost:60},
@@ -283,7 +304,7 @@
       ]
     },
     zone: {
-      name:"Transformateur de zone", key:"2", cost:90, color:"var(--plasma)", colorHex:"#7C5CFF", kind:"area",
+      name:"Transformateur de zone", key:"2", cost:90, colorHex:"#7C5CFF", kind:"area",
       levels:[
         {damage:1, range:1.5, rate:1.0},
         {damage:1, range:2.0, rate:1.0, upgradeCost:120},
@@ -291,7 +312,7 @@
       ]
     },
     stab: {
-      name:"Stabilisateur", key:"3", cost:70, color:"var(--cyan)", colorHex:"#33E1FF", kind:"slow",
+      name:"Stabilisateur", key:"3", cost:70, colorHex:"#33E1FF", kind:"slow",
       levels:[
         {slow:0.35, range:2.5},
         {slow:0.5, range:2.5, upgradeCost:90},
@@ -301,7 +322,7 @@
   };
 
   var INCIDENTS = {
-    surge:   {name:"Surtension",   hp:1, speed:1.3, reward:8,  color:"#FFFFFF"},
+    surge:   {name:"Surtension",   hp:1, speed:1.3, reward:8,  color:"#FFE9A8"},
     short:   {name:"Court-circuit itinérant", hp:2, speed:1.0, reward:12, color:"#FF6B6B"},
     cascade: {name:"Panne en cascade", hp:3, speed:0.7, reward:15, color:"#9AA6B6"},
     sabotage:{name:"Sabotage", hp:5, speed:1.0, reward:25, color:"#FF2E43"}
@@ -315,16 +336,18 @@
   var MAX_DISTRICT_LOSSES = 3;
   var END_ANIM_DURATION = 1.5;
 
-  // ---------- ÉTAT ----------
+  var CORE_TILE = PATH[PATH_MAX_T]; // (11,4) — the plant every tech/drone dispatches from
+
+  // ---------- STATE ----------
   var S = {};
   function resetState(){
     S.credits = START_CREDITS;
     S.night = 1;
     S.waveInNight = 1;
     S.districts = [];
-    for (var i=0;i<TOTAL_DISTRICTS;i++) S.districts.push({hits:3, dark:false});
+    for (var i=0;i<TOTAL_DISTRICTS;i++) S.districts.push({hits:3, dark:false, criticalShown:false});
     S.districtsLost = 0;
-    S.towers = {}; // clé "c,r" -> tour
+    S.towers = {}; // key "c,r" -> tower
     S.incidents = [];
     S.phase = "build"; // build | wave | nightintro | victoryanim | defeatanim | victory | defeat
     S.paused = false;
@@ -338,11 +361,24 @@
     S.perfectWaves = 0;
     S.timeRemainingSum = 0;
     S.fx = [];
+    S.units = []; // cosmetic techs/drones, no mechanical effect
     S.hoverTile = null;
     S.endAnimStart = 0;
+    S.tutorialActive = false;
+    S.tutorialStep = -1;
   }
   resetState();
-  var CLOCK = 0; // horloge ambiante, toujours active
+  var CLOCK = 0; // free-running ambient clock, always advances
+
+  // ---------- TUTORIAL STRINGS ----------
+  var TUT = [
+    "Ce bâtiment est le <b>Quartier 1</b> — l'un des cinq que tu dois garder allumés. Perds trois quartiers et la ville retombe définitivement dans le noir.",
+    "Choisis une unité à construire. Essaie le <b>Relais rapide</b> — clique ou touche-le ci-dessous.",
+    "Place-la maintenant — clique ou touche une <b>case qui brille</b> près du chemin.",
+    "Prêt. Appuie sur <b>Lancer la vague</b> pour envoyer le premier incident.",
+    "Regarde : l'incident avance le long du chemin, ta tour tire automatiquement, et les crédits augmentent quand il est détruit.",
+    "Bien joué. Terminer une vague rapporte des crédits et des points. Construis plus, améliore tes tours, puis lance la vague suivante quand tu es prêt."
+  ];
 
   // ---------- DOM ----------
   var screens = {
@@ -380,8 +416,14 @@
   var upgradeBar = document.getElementById("upgrade-bar");
   var upgradeInfo = document.getElementById("upgrade-info");
   var btnWave = document.getElementById("btn-wave");
+  var tutBox = document.getElementById("tutorial-box");
+  var tutText = document.getElementById("tutorial-text");
+  var tutContinue = document.getElementById("tutorial-continue");
 
-  // ---------- OUTILS ----------
+  var TUTORIAL_KEY = "blackoutProtocolTutorialSeenFR";
+  var forceTutorialNext = false;
+
+  // ---------- HELPERS ----------
   function tileCenter(c,r){ return {x:c*TILE+TILE/2, y:r*TILE+TILE/2}; }
   function isBuildable(c,r){ return !!BUILDABLE_SET[c+","+r]; }
   function towerKey(c,r){ return c+","+r; }
@@ -417,11 +459,72 @@
     return pool[Math.floor(Math.random()*pool.length)];
   }
 
-  // ---------- CONSTRUCTION / AMÉLIORATION ----------
+  // ---------- COSMETIC UNITS (no mechanical effect) ----------
+  function spawnTech(towerC, towerR){
+    var from = tileCenter(CORE_TILE.c, CORE_TILE.r);
+    var to = tileCenter(towerC, towerR);
+    S.units.push({kind:"tech", fromX:from.x, fromY:from.y, toX:to.x, toY:to.y, born:CLOCK, life:0.7});
+  }
+  function spawnDrone(districtIdx){
+    var from = tileCenter(CORE_TILE.c, CORE_TILE.r);
+    var to = pathPos(CHECKPOINTS[districtIdx]);
+    S.units.push({kind:"drone", fromX:from.x, fromY:from.y, toX:to.x, toY:to.y, born:CLOCK, life:0.9});
+  }
+
+  // ---------- TUTORIAL FLOW ----------
+  function tutorialSeen(){ try{ return localStorage.getItem(TUTORIAL_KEY)==="1"; }catch(e){ return false; } }
+  function markTutorialSeen(){ try{ localStorage.setItem(TUTORIAL_KEY,"1"); }catch(e){} }
+
+  function updateTutorialUI(){
+    if (!S.tutorialActive){ tutBox.hidden = true; refreshCoachMarks(); return; }
+    tutBox.hidden = false;
+    tutText.innerHTML = TUT[S.tutorialStep] || "";
+    tutContinue.hidden = !(S.tutorialStep===0 || S.tutorialStep===5);
+    refreshCoachMarks();
+  }
+  function refreshCoachMarks(){
+    Array.prototype.forEach.call(buildBar.querySelectorAll(".unitbtn"), function(b){ b.classList.remove("coach"); });
+    btnWave.classList.remove("coach");
+    if (!S.tutorialActive) return;
+    if (S.tutorialStep===1){
+      var relayBtn = buildBar.querySelector('[data-unit="relay"]');
+      if (relayBtn) relayBtn.classList.add("coach");
+    } else if (S.tutorialStep===3){
+      btnWave.classList.add("coach");
+    }
+  }
+  function tutorialFlash(msg){
+    var old = tutText.innerHTML;
+    tutText.innerHTML = msg;
+    tutBox.classList.add("flash");
+    setTimeout(function(){
+      tutBox.classList.remove("flash");
+      if (S.tutorialActive) tutText.innerHTML = TUT[S.tutorialStep] || "";
+    }, 900);
+  }
+  function tutorialAdvanceIf(step, next){
+    if (S.tutorialActive && S.tutorialStep===step){
+      S.tutorialStep = next;
+      updateTutorialUI();
+    }
+  }
+  function endTutorial(){
+    S.tutorialActive = false;
+    S.tutorialStep = -1;
+    markTutorialSeen();
+    updateTutorialUI();
+  }
+  tutContinue.addEventListener("click", function(){
+    if (S.tutorialStep===0) tutorialAdvanceIf(0,1);
+    else if (S.tutorialStep===5) endTutorial();
+  });
+
+  // ---------- BUILD / UPGRADE ----------
   function selectUnit(type){
     if (S.phase!=="build") return;
     S.selectedTowerKey = null;
     S.selectedUnit = (S.selectedUnit===type) ? null : type;
+    if (S.selectedUnit) tutorialAdvanceIf(1,2);
     refreshBars();
   }
 
@@ -433,7 +536,10 @@
 
   function placeTower(c,r){
     if (S.phase!=="build" || !S.selectedUnit) return;
-    if (!isBuildable(c,r)) return;
+    if (!isBuildable(c,r)) {
+      if (S.tutorialActive && S.tutorialStep===2) tutorialFlash("Impossible de construire ici — choisis une <b>case qui brille</b>.");
+      return;
+    }
     var key = towerKey(c,r);
     if (S.towers[key]) return;
     var cfg = TOWERS[S.selectedUnit];
@@ -442,7 +548,9 @@
     S.towers[key] = {type:S.selectedUnit, level:0, c:c, r:r, cooldown:0};
     var pos = tileCenter(c,r);
     addFx({type:"upgrade", x:pos.x, y:pos.y, life:0.5, color:cfg.colorHex});
+    spawnTech(c,r);
     S.selectedUnit = null;
+    tutorialAdvanceIf(2,3);
     refreshBars();
   }
 
@@ -468,6 +576,7 @@
     tw.level = nextLevel;
     var pos = tileCenter(tw.c,tw.r);
     addFx({type:"upgrade", x:pos.x, y:pos.y, life:0.6, color:cfg.colorHex});
+    spawnTech(tw.c,tw.r);
     refreshBars();
   }
 
@@ -491,10 +600,12 @@
       if (tw.level>=2){
         upgradeInfo.innerHTML = "<b>"+cfg.name+"</b> — niveau 2 (max)";
         document.getElementById("btn-upgrade").disabled = true;
+        document.getElementById("btn-upgrade").textContent = "Niveau max";
       } else {
         var cost = cfg.levels[tw.level+1].upgradeCost;
         upgradeInfo.innerHTML = "<b>"+cfg.name+"</b> — niveau "+tw.level+" &rarr; "+(tw.level+1)+" ("+cost+" cr)";
         document.getElementById("btn-upgrade").disabled = (S.credits<cost);
+        document.getElementById("btn-upgrade").textContent = "Améliorer "+cfg.name;
       }
     } else {
       buildBar.hidden = (S.phase==="victoryanim" || S.phase==="defeatanim");
@@ -503,9 +614,10 @@
 
     btnWave.textContent = S.phase==="wave" ? (S.paused?"Reprendre la vague":"Mettre en pause") : "Lancer la vague";
     btnWave.classList.toggle("paused", S.phase==="wave" && S.paused);
+    refreshCoachMarks();
   }
 
-  // ---------- DÉROULEMENT DES VAGUES ----------
+  // ---------- WAVE FLOW ----------
   function startWave(){
     if (S.phase!=="build") return;
     S.phase = "wave";
@@ -515,6 +627,7 @@
     S.spawnQueue = incidentsCountForWave(S.night, S.waveInNight);
     S.spawnTimer = 0;
     S.waveHadHit = false;
+    tutorialAdvanceIf(3,4);
     refreshBars();
   }
 
@@ -531,6 +644,10 @@
     S.waveHadHit = true;
     var pos = pathPos(CHECKPOINTS[idx]);
     addFx({type:"districthit", x:pos.x, y:pos.y, life:0.35});
+    if (d.hits<=1 && !d.criticalShown){
+      d.criticalShown = true;
+      spawnDrone(idx);
+    }
     if (d.hits<=0){
       d.dark = true;
       S.districtsLost++;
@@ -552,6 +669,7 @@
 
   function completeWave(){
     if (S.waveHadHit===false) S.perfectWaves++;
+    var wasTutorialWave = (S.tutorialActive && S.tutorialStep===4);
     S.waveInNight++;
     if (S.waveInNight>WAVES_PER_NIGHT){
       var remaining = Math.max(0, NIGHT_TIME_BUDGET - S.nightActiveSeconds);
@@ -564,12 +682,14 @@
         S.endAnimStart = CLOCK;
         return;
       }
+      if (wasTutorialWave){ S.tutorialStep = 5; updateTutorialUI(); }
       document.getElementById("ni-num").textContent = S.night;
       S.phase = "nightintro";
       showScreen("nightintro");
       return;
     }
     S.phase = "build";
+    if (wasTutorialWave){ S.tutorialStep = 5; updateTutorialUI(); }
     refreshBars();
   }
 
@@ -611,7 +731,7 @@
     showScreen("defeat");
   }
 
-  // ---------- BOUCLE DE JEU ----------
+  // ---------- GAME LOOP ----------
   var lastTs = null;
   function loop(ts){
     if (lastTs===null) lastTs = ts;
@@ -630,6 +750,7 @@
           if (S.phase==="victoryanim") triggerVictory(); else triggerDefeat();
         }
       }
+      S.units = S.units.filter(function(u){ return (CLOCK-u.born) <= u.life; });
       render();
     }
     requestAnimationFrame(loop);
@@ -638,15 +759,17 @@
   function update(dt){
     S.nightActiveSeconds += dt;
 
-    // apparition
+    // spawn
     if (S.spawnQueue>0){
       S.spawnTimer -= dt;
       if (S.spawnTimer<=0){
         var type = pickIncidentType(S.night);
         var base = INCIDENTS[type];
+        var maxHp = base.hp*nightHpMult(S.night);
         S.incidents.push({
           type:type,
-          hp: base.hp*nightHpMult(S.night),
+          hp: maxHp,
+          maxHp: maxHp,
           baseSpeed: base.speed*nightSpeedMult(S.night),
           t:0,
           charged:[false,false,false,false,false],
@@ -660,7 +783,7 @@
       }
     }
 
-    // champs de ralentissement du Stabilisateur
+    // stabilizer slow fields
     var stabs = [];
     for (var k in S.towers){
       if (S.towers[k].type==="stab") stabs.push(S.towers[k]);
@@ -679,7 +802,7 @@
       });
     });
 
-    // déplacement + points de contrôle
+    // move + checkpoints
     S.incidents.forEach(function(inc){
       if (!inc.alive) return;
       inc.t += inc.baseSpeed*inc.slowFactor*dt;
@@ -690,17 +813,17 @@
         }
       }
       if (inc.t>=PATH_MAX_T){
-        inc.alive = false; // atteint le cœur du réseau, la brèche est déjà comptabilisée
+        inc.alive = false; // reached the core, breach resolved via last checkpoint
       }
     });
 
-    if (S.phase!=="wave") { // une défaite a pu survenir en cours de boucle
+    if (S.phase!=="wave") { // a defeat may have fired mid-loop
       S.incidents = S.incidents.filter(function(inc){ return inc.alive; });
       refreshBars();
       return;
     }
 
-    // tir des tours
+    // towers fire
     for (var k2 in S.towers){
       var tw = S.towers[k2];
       if (tw.type==="stab") continue;
@@ -723,6 +846,7 @@
           addFx({type:"impact", x:tpos.x, y:tpos.y, life:0.25, color:TOWERS.relay.colorHex});
           target.hp -= stats.damage;
           tw.cooldown = stats.rate;
+          tw.fireFlash = CLOCK;
           if (target.hp<=0) neutralize(target);
         }
       } else if (tw.type==="zone"){
@@ -739,6 +863,7 @@
         });
         if (hitAny){
           tw.cooldown = stats.rate;
+          tw.fireFlash = CLOCK;
           addFx({type:"zonepulse", x:origin.x, y:origin.y, life:0.45, radius:stats.range*TILE, color:TOWERS.zone.colorHex});
         }
       }
@@ -752,7 +877,7 @@
     refreshBars();
   }
 
-  // ---------- RENDU : FOND DE L'ÉCRAN D'ACCUEIL ----------
+  // ---------- RENDER: START BACKGROUND ----------
   var glyphPool = ["SECT-04","GRID-B","NODE-12","0x2F1A","LINE-07","RELAY-3","PWR-88","SIG-LOST","GRID-A","NODE-05","CH-11","FEED-02"];
   var glyphs = [];
   var scanY = 0;
@@ -819,11 +944,12 @@
     bgctx.fillRect(0,0,w,h);
   }
 
-  // ---------- RENDU : JEU ----------
+  // ---------- RENDER: GAME ----------
   function render(){
     ctx.fillStyle = "#05070B";
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
+    // grid
     ctx.strokeStyle = "#161B22";
     ctx.lineWidth = 1;
     for (var c=0;c<=COLS;c++){
@@ -833,27 +959,42 @@
       ctx.beginPath(); ctx.moveTo(0,r*TILE); ctx.lineTo(COLS*TILE,r*TILE); ctx.stroke();
     }
 
-    ctx.strokeStyle = "#2B3648";
-    ctx.setLineDash([4,3]);
+    // buildable tiles — much more visible: filled + pulsing border + plug icon
+    var buildPulse = 0.5+0.5*Math.sin(CLOCK*3);
     BUILDABLE.forEach(function(p){
       var key = p[0]+","+p[1];
       if (S.towers[key]) return;
-      ctx.strokeRect(p[0]*TILE+4, p[1]*TILE+4, TILE-8, TILE-8);
+      var isCoachTile = false;
+      var x = p[0]*TILE+4, y = p[1]*TILE+4, wsz = TILE-8;
+      ctx.fillStyle = "rgba(51,225,255,"+(0.05+buildPulse*0.04)+")";
+      ctx.fillRect(x,y,wsz,wsz);
+      ctx.strokeStyle = "rgba(51,225,255,"+(0.35+buildPulse*0.25)+")";
+      ctx.setLineDash([5,4]);
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x,y,wsz,wsz);
+      ctx.setLineDash([]);
+      // plug icon (+ shape)
+      var cx = x+wsz/2, cy = y+wsz/2;
+      ctx.strokeStyle = "rgba(51,225,255,0.55)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(cx-5,cy); ctx.lineTo(cx+5,cy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx,cy-5); ctx.lineTo(cx,cy+5); ctx.stroke();
     });
-    ctx.setLineDash([]);
 
+    // hover preview
     if (S.phase==="build" && S.selectedUnit && S.hoverTile){
       var hk = S.hoverTile.c+","+S.hoverTile.r;
       if (isBuildable(S.hoverTile.c,S.hoverTile.r) && !S.towers[hk]){
         var cfg = TOWERS[S.selectedUnit];
         var hp = tileCenter(S.hoverTile.c,S.hoverTile.r);
-        ctx.globalAlpha = 0.35 + 0.15*Math.sin(CLOCK*6);
+        ctx.globalAlpha = 0.4 + 0.2*Math.sin(CLOCK*6);
         ctx.fillStyle = cfg.colorHex;
         ctx.fillRect(hp.x-TILE/2+6, hp.y-TILE/2+6, TILE-12, TILE-12);
         ctx.globalAlpha = 1;
       }
     }
 
+    // path
     var pathDim = (S.phase==="defeatanim") ? Math.max(0, 1-(CLOCK-S.endAnimStart)/END_ANIM_DURATION) : 1;
     ctx.strokeStyle = "#2B3648";
     ctx.globalAlpha = pathDim;
@@ -868,6 +1009,7 @@
     ctx.stroke();
     ctx.globalAlpha = 1;
 
+    // victory relight sweep along the path
     if (S.phase==="victoryanim"){
       var vp = Math.min(1,(CLOCK-S.endAnimStart)/END_ANIM_DURATION);
       ctx.strokeStyle = "#FFE9B8";
@@ -884,96 +1026,59 @@
       ctx.globalAlpha = 1;
     }
 
+    // sector labels
     ctx.fillStyle = "#6E7A8A";
     ctx.font = "9px ui-monospace, monospace";
     for (var sc=0; sc<COLS; sc+=3){
       ctx.fillText("S"+sc, sc*TILE+3, 10);
     }
 
+    // districts — drawn as buildings with lit/dark windows
     CHECKPOINTS.forEach(function(t,i){
       var pos = pathPos(t);
-      var d = S.districts[i];
-      var frac = Math.max(0,d.hits)/3;
       var relit = S.phase==="victoryanim" ? Math.min(1,(CLOCK-S.endAnimStart)/END_ANIM_DURATION) : 0;
-      var pulse = d.dark ? 0 : (Math.sin(CLOCK*2.2 + i*1.3)*0.5+0.5);
-      var baseColor = d.dark ? "#2B3648" : lerpColor("#FF2E43","#FFE9B8", Math.max(frac,relit));
-      var radius = 10 + (d.dark?0:pulse*1.6);
-      ctx.beginPath();
-      ctx.arc(pos.x,pos.y,radius+4,0,Math.PI*2);
-      ctx.fillStyle = d.dark ? "rgba(0,0,0,0)" : "rgba(255,233,184,"+(0.08+pulse*0.10)+")";
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(pos.x,pos.y,radius,0,Math.PI*2);
-      ctx.fillStyle = baseColor;
-      ctx.fill();
-      ctx.strokeStyle = "#EAF0F6";
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+      drawDistrictBuilding(pos, S.districts[i], relit);
     });
 
+    // towers — distinct silhouettes per function
     for (var k in S.towers){
       var tw = S.towers[k];
-      var cfg2 = TOWERS[tw.type];
       var pos3 = tileCenter(tw.c,tw.r);
-      var size = 10 + tw.level*4;
-
-      if (tw.type==="zone"){
-        var statsPerm = mergedStats("zone",tw.level);
-        ctx.beginPath();
-        ctx.arc(pos3.x,pos3.y,statsPerm.range*0.35*TILE,0,Math.PI*2);
-        ctx.fillStyle = "rgba(124,92,255,0.12)";
-        ctx.fill();
-      }
-      if (tw.type==="stab"){
-        var ringR1 = 8 + (CLOCK*14)%14;
-        var ringR2 = 8 + ((CLOCK*14)+9)%14;
-        ctx.strokeStyle = "rgba(51,225,255,0.35)";
-        ctx.setLineDash([3,4]);
-        ctx.lineWidth = 1.2;
-        ctx.beginPath(); ctx.arc(pos3.x,pos3.y,ringR1,0,Math.PI*2); ctx.stroke();
-        ctx.beginPath(); ctx.arc(pos3.x,pos3.y,ringR2, Math.PI*0.3, Math.PI*2.1); ctx.stroke();
-        ctx.setLineDash([]);
-      }
-      if (S.selectedTowerKey===k){
-        var st = mergedStats(tw.type, tw.level);
-        var rad = (st.range!==undefined ? st.range : 0)*TILE;
-        ctx.beginPath();
-        ctx.arc(pos3.x,pos3.y,rad,0,Math.PI*2);
-        ctx.strokeStyle = cfg2.colorHex;
-        ctx.globalAlpha = 0.6;
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-      }
-
-      ctx.fillStyle = cfg2.colorHex;
-      if (tw.type==="relay"){
-        ctx.fillRect(pos3.x-size/2,pos3.y-size/2,size,size);
-      } else if (tw.type==="zone"){
-        ctx.beginPath();
-        ctx.arc(pos3.x,pos3.y,size/1.6,0,Math.PI*2);
-        ctx.fill();
-      } else {
-        drawHex(pos3.x,pos3.y,size/1.6);
-      }
+      drawTower(tw, pos3);
     }
 
-    S.incidents.forEach(function(inc){
-      var pos = pathPos(inc.t);
-      var base = INCIDENTS[inc.type];
-      var age = CLOCK-(inc.spawnT||0);
-      var scale = age<0.25 ? Math.max(0.2,age/0.25) : 1;
-      var alpha = age<0.25 ? scale : 1;
-      ctx.globalAlpha = alpha;
-      ctx.beginPath();
-      ctx.arc(pos.x,pos.y,5*scale,0,Math.PI*2);
-      ctx.fillStyle = base.color;
-      ctx.fill();
+    // cosmetic units (techs / drones) — visible reaction to real player actions/events
+    S.units.forEach(function(u){
+      var p = (CLOCK-u.born)/u.life;
+      var ease = p<0.5 ? 2*p*p : 1-Math.pow(-2*p+2,2)/2;
+      var x = u.fromX + (u.toX-u.fromX)*ease;
+      var y = u.fromY + (u.toY-u.fromY)*ease;
+      ctx.globalAlpha = p>0.85 ? (1-(p-0.85)/0.15) : 1;
+      if (u.kind==="tech"){
+        ctx.fillStyle = "#FFE9B8";
+        ctx.beginPath(); ctx.arc(x,y-4,2.5,0,Math.PI*2); ctx.fill(); // head
+        ctx.strokeStyle = "#FFE9B8"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x,y-1.5); ctx.lineTo(x,y+6); ctx.stroke(); // body
+      } else {
+        ctx.fillStyle = "#33E1FF";
+        ctx.beginPath();
+        ctx.moveTo(x,y-5); ctx.lineTo(x+5,y); ctx.lineTo(x,y+5); ctx.lineTo(x-5,y);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = Math.sin(CLOCK*20)>0 ? "#FF2E43" : "#33E1FF";
+        ctx.beginPath(); ctx.arc(x,y,1.5,0,Math.PI*2); ctx.fill();
+      }
       ctx.globalAlpha = 1;
     });
 
+    // incidents — distinct shape per type + HP sliver
+    S.incidents.forEach(function(inc){
+      drawIncident(inc);
+    });
+
+    // fx layer
     renderFx();
 
+    // paused overlay
     if (S.phase==="wave" && S.paused){
       ctx.fillStyle = "rgba(5,7,11,0.55)";
       ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -984,11 +1089,203 @@
       ctx.textAlign = "left";
     }
 
+    // defeat darken overlay
     if (S.phase==="defeatanim"){
       var dp = Math.min(1,(CLOCK-S.endAnimStart)/END_ANIM_DURATION);
       ctx.fillStyle = "rgba(0,0,0,"+(dp*0.85)+")";
       ctx.fillRect(0,0,canvas.width,canvas.height);
     }
+  }
+
+  function drawDistrictBuilding(pos, d, relit){
+    var frac = Math.max(0,d.hits)/3;
+    var litAmount = Math.max(frac, relit);
+    var pulse = d.dark ? 0 : (Math.sin(CLOCK*2.2)*0.5+0.5);
+    var bw = 22, bh = 30;
+    var bx = pos.x - bw/2, by = pos.y - bh + 6;
+
+    // ambient glow halo
+    if (!d.dark){
+      ctx.beginPath();
+      ctx.arc(pos.x,pos.y-6,20+pulse*3,0,Math.PI*2);
+      ctx.fillStyle = "rgba(255,233,184,"+(0.05+pulse*0.06+litAmount*0.05)+")";
+      ctx.fill();
+    }
+
+    // building body
+    ctx.fillStyle = d.dark ? "#12161D" : "#1B222C";
+    ctx.fillRect(bx,by,bw,bh);
+    ctx.strokeStyle = d.dark ? "#2B3648" : "#3A4658";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(bx,by,bw,bh);
+    // small roof cap
+    ctx.fillStyle = d.dark ? "#0E1116" : "#232C39";
+    ctx.fillRect(bx-1,by-3,bw+2,4);
+
+    // windows grid 2x3
+    var winLit = d.dark ? 0 : Math.round(litAmount*6);
+    var idx=0;
+    for (var row=0; row<3; row++){
+      for (var col=0; col<2; col++){
+        var wx = bx+5+col*10, wy = by+5+row*8;
+        var isLit = idx<winLit;
+        ctx.fillStyle = isLit ? "#FFD27A" : "#12161D";
+        ctx.fillRect(wx,wy,5,5);
+        idx++;
+      }
+    }
+
+    // cracks when dark
+    if (d.dark){
+      ctx.strokeStyle = "#3A4658";
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(bx+3,by+2); ctx.lineTo(bx+10,by+14); ctx.lineTo(bx+6,by+22); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx+18,by+4); ctx.lineTo(bx+13,by+16); ctx.lineTo(bx+17,by+26); ctx.stroke();
+    } else if (d.hits<=1){
+      // alarm light on roof, blinking
+      ctx.fillStyle = Math.sin(CLOCK*8)>0 ? "#FF2E43" : "rgba(255,46,67,0.2)";
+      ctx.beginPath(); ctx.arc(pos.x, by-5, 2.5, 0, Math.PI*2); ctx.fill();
+    }
+  }
+
+  function drawTower(tw, pos3){
+    var cfg2 = TOWERS[tw.type];
+    var lvl = tw.level;
+    var fireGlow = tw.fireFlash!==undefined && (CLOCK-tw.fireFlash)<0.12;
+
+    if (tw.type==="zone"){
+      var statsPerm = mergedStats("zone",lvl);
+      ctx.beginPath();
+      ctx.arc(pos3.x,pos3.y,statsPerm.range*0.35*TILE,0,Math.PI*2);
+      ctx.fillStyle = "rgba(124,92,255,0.12)";
+      ctx.fill();
+    }
+    if (S.selectedTowerKey===towerKey(tw.c,tw.r)){
+      var st = mergedStats(tw.type, lvl);
+      var rad = (st.range!==undefined ? st.range : 0)*TILE;
+      ctx.beginPath();
+      ctx.arc(pos3.x,pos3.y,rad,0,Math.PI*2);
+      ctx.strokeStyle = cfg2.colorHex;
+      ctx.globalAlpha = 0.6;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    var baseSize = 8 + lvl*3;
+    ctx.strokeStyle = cfg2.colorHex;
+    ctx.fillStyle = cfg2.colorHex;
+
+    if (tw.type==="relay"){
+      // pylon: foot + mast + crossbar + blinking bulb
+      ctx.fillStyle = "#161B22";
+      ctx.fillRect(pos3.x-7,pos3.y+baseSize-2,14,4);
+      ctx.strokeStyle = cfg2.colorHex; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(pos3.x,pos3.y+baseSize); ctx.lineTo(pos3.x,pos3.y-baseSize); ctx.stroke();
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(pos3.x-6,pos3.y-baseSize+4); ctx.lineTo(pos3.x+6,pos3.y-baseSize+4); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(pos3.x-4,pos3.y-baseSize+9); ctx.lineTo(pos3.x+4,pos3.y-baseSize+9); ctx.stroke();
+      ctx.fillStyle = fireGlow ? "#FFFFFF" : cfg2.colorHex;
+      ctx.beginPath(); ctx.arc(pos3.x,pos3.y-baseSize-1,fireGlow?4:3,0,Math.PI*2); ctx.fill();
+    } else if (tw.type==="zone"){
+      // drum: rounded body + two bushings on top
+      ctx.fillStyle = fireGlow ? "#B7A6FF" : cfg2.colorHex;
+      roundRect(pos3.x-baseSize*0.7,pos3.y-baseSize*0.5,baseSize*1.4,baseSize*1.1,4);
+      ctx.fill();
+      ctx.fillStyle = "#161B22";
+      ctx.beginPath(); ctx.arc(pos3.x-baseSize*0.35,pos3.y-baseSize*0.5,2,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(pos3.x+baseSize*0.35,pos3.y-baseSize*0.5,2,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle = cfg2.colorHex; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(pos3.x-baseSize*0.35,pos3.y-baseSize*0.5); ctx.lineTo(pos3.x-baseSize*0.35,pos3.y-baseSize*0.9); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(pos3.x+baseSize*0.35,pos3.y-baseSize*0.5); ctx.lineTo(pos3.x+baseSize*0.35,pos3.y-baseSize*0.9); ctx.stroke();
+    } else {
+      // stabilizer: hex capacitor bank + rotating rings (kept) + core dot
+      drawHex(pos3.x,pos3.y,baseSize*0.85);
+      var sstats = mergedStats("stab", lvl);
+      var ringR1 = 8 + (CLOCK*14)%14;
+      var ringR2 = 8 + ((CLOCK*14)+9)%14;
+      ctx.strokeStyle = "rgba(51,225,255,0.35)";
+      ctx.setLineDash([3,4]);
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(pos3.x,pos3.y,ringR1,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(pos3.x,pos3.y,ringR2, Math.PI*0.3, Math.PI*2.1); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "#0E1116";
+      ctx.beginPath(); ctx.arc(pos3.x,pos3.y,3,0,Math.PI*2); ctx.fill();
+    }
+  }
+
+  function roundRect(x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  function drawIncident(inc){
+    var pos = pathPos(inc.t);
+    var base = INCIDENTS[inc.type];
+    var age = CLOCK-(inc.spawnT||0);
+    var scale = age<0.25 ? Math.max(0.2,age/0.25) : 1;
+    ctx.globalAlpha = age<0.25 ? scale : 1;
+
+    var x=pos.x, y=pos.y;
+    if (inc.type==="surge"){
+      var jx = (Math.random()-0.5)*1.5, jy=(Math.random()-0.5)*1.5;
+      drawSpark(x+jx,y+jy,6*scale,base.color);
+    } else if (inc.type==="short"){
+      drawBolt(x,y,7*scale,base.color);
+    } else if (inc.type==="cascade"){
+      ctx.fillStyle = "rgba(154,166,182,0.25)";
+      ctx.beginPath(); ctx.arc(x-4,y,7*scale,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = base.color;
+      ctx.beginPath(); ctx.arc(x,y,6*scale,0,Math.PI*2); ctx.fill();
+    } else {
+      drawSabotage(x,y,8*scale,base.color);
+    }
+
+    // HP sliver above (only when it has taken damage or maxHp>1)
+    if (inc.maxHp>1){
+      var w = 16, hgt=2.5;
+      var f = Math.max(0,inc.hp)/inc.maxHp;
+      ctx.fillStyle = "rgba(5,7,11,0.7)";
+      ctx.fillRect(x-w/2,y-13,w,hgt);
+      ctx.fillStyle = f>0.5 ? "#FFE9B8" : "#FF2E43";
+      ctx.fillRect(x-w/2,y-13,w*f,hgt);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawSpark(x,y,r,color){
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    for (var i=0;i<8;i++){
+      var ang = Math.PI/4*i;
+      var rr = (i%2===0)?r:r*0.4;
+      var px = x+Math.cos(ang)*rr, py = y+Math.sin(ang)*rr;
+      if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.closePath(); ctx.fill();
+  }
+  function drawBolt(x,y,r,color){
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x-2,y-r); ctx.lineTo(x+2,y-2); ctx.lineTo(x-1,y-2);
+    ctx.lineTo(x+2,y+r); ctx.lineTo(x-2,y+2); ctx.lineTo(x+1,y+2);
+    ctx.closePath(); ctx.fill();
+  }
+  function drawSabotage(x,y,r,color){
+    ctx.fillStyle = "#1B222C";
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(CLOCK*0.5);
+    ctx.fillRect(-r,-r,r*2,r*2);
+    ctx.restore();
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(x-r*0.6,y-r*0.6); ctx.lineTo(x+r*0.3,y+r*0.2); ctx.lineTo(x-r*0.1,y+r*0.6); ctx.stroke();
   }
 
   function renderFx(){
@@ -1032,13 +1329,13 @@
         ctx.strokeStyle = "#EAF0F6";
         ctx.globalAlpha = 1-p;
         ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(fx.x,fx.y, 8+p*16, 0, Math.PI*2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(fx.x,fx.y-6, 8+p*16, 0, Math.PI*2); ctx.stroke();
         ctx.globalAlpha = 1;
       } else if (fx.type==="districtdark"){
         ctx.strokeStyle = "#FF2E43";
         ctx.globalAlpha = (1-p)*0.9;
         ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(fx.x,fx.y, 6+p*34, 0, Math.PI*2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(fx.x,fx.y-6, 6+p*34, 0, Math.PI*2); ctx.stroke();
         ctx.globalAlpha = 1;
       } else if (fx.type==="upgrade"){
         ctx.strokeStyle = fx.color;
@@ -1063,19 +1360,7 @@
     ctx.fill();
   }
 
-  function lerpColor(a,b,t){
-    var ca = hexToRgb(a), cb = hexToRgb(b);
-    var r = Math.round(ca.r+(cb.r-ca.r)*t);
-    var g = Math.round(ca.g+(cb.g-ca.g)*t);
-    var bl = Math.round(ca.b+(cb.b-ca.b)*t);
-    return "rgb("+r+","+g+","+bl+")";
-  }
-  function hexToRgb(hex){
-    var v = parseInt(hex.slice(1),16);
-    return {r:(v>>16)&255, g:(v>>8)&255, b:v&255};
-  }
-
-  // ---------- ENTRÉES ----------
+  // ---------- INPUT ----------
   function canvasToTile(clientX, clientY){
     var rect = canvas.getBoundingClientRect();
     var scaleX = canvas.width/rect.width;
@@ -1124,28 +1409,27 @@
     else if (e.key==="Escape") cancelSelection();
   });
 
-  // ---------- FLUX ----------
-  document.getElementById("btn-start").addEventListener("click", function(){
+  // ---------- FLOW ----------
+  function launchGame(){
     resetState();
+    if (forceTutorialNext || !tutorialSeen()){
+      S.tutorialActive = true;
+      S.tutorialStep = 0;
+    }
+    forceTutorialNext = false;
     blackoutTransition(function(){
       showScreen("game");
       refreshBars();
+      updateTutorialUI();
     });
+  }
+  document.getElementById("btn-start").addEventListener("click", launchGame);
+  document.getElementById("btn-howto").addEventListener("click", function(){
+    forceTutorialNext = true;
+    launchGame();
   });
-  document.getElementById("btn-replay-v").addEventListener("click", function(){
-    resetState();
-    blackoutTransition(function(){
-      showScreen("game");
-      refreshBars();
-    });
-  });
-  document.getElementById("btn-replay-d").addEventListener("click", function(){
-    resetState();
-    blackoutTransition(function(){
-      showScreen("game");
-      refreshBars();
-    });
-  });
+  document.getElementById("btn-replay-v").addEventListener("click", launchGame);
+  document.getElementById("btn-replay-d").addEventListener("click", launchGame);
 
   refreshBars();
   requestAnimationFrame(loop);

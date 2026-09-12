@@ -106,3 +106,36 @@ No link above is fabricated — each was produced directly by the `gh` and `verc
 ## Proofs available
 
 Two independent full 25-wave victories were played and observed live in this session, one per language, with final scores, per-category breakdowns, and screenshots reviewed at the time (English: 3699 / earlier run; French: 4329, flawless 5/5). Responsive screenshots at 5 viewport sizes were reviewed for both the layout bug and its fix. All of this is described above with the exact numbers as they appeared on screen, not estimated or assumed.
+
+## Round 2 — visual and onboarding overhaul (this session)
+
+The first version was mechanically correct but looked like an abstract prototype (a grid, dots, plain shapes) — not acceptable for a project presented as a real game. This round reworked the presentation while leaving every locked rule (map, stats, timing, scoring) untouched.
+
+**What changed:**
+- **Districts are now buildings**, not circles: a 2×3 window grid, a roof cap, an alarm light when a district is critical (≤1 hit remaining), and a visible crack pattern when it goes fully dark — instead of a plain glowing dot.
+- **Towers have distinct silhouettes**: a pylon shape for Rapid Relay, a drum shape for the Zone Transformer, a hex-bank shape for the Stabilizer, each with a fire/pulse flash when acting.
+- **Incidents (enemies) are now shape-coded and animated**: Surge, Short-Circuit, Cascading Outage, and Sabotage each render as a distinct shape with a visible HP sliver bar, instead of identical dots.
+- **A real, gated interactive tutorial**: 6 steps (see a district, choose a unit, place it — with an explained refusal on invalid placement, launch the first wave, see it explained live, understand credits/damage/districts). It auto-launches on first-ever play (tracked separately per language in `localStorage`) and can be replayed anytime via a "How to Play" / "Comment jouer" button without touching best-score data. Coach marks highlight the relevant button at each step.
+- **Cosmetic mobile units tied to real events, not decorative**: a small "tech" sprite walks from a fixed depot to a tower the instant it is built or upgraded; a "drone" sprite flies to a district the instant it first becomes critical. Neither spawns without a corresponding player action or game event.
+- **Buttons are explicitly action-labeled**: "Build Relay" / "Build Transformer" / "Build Stabilizer" instead of bare unit names.
+- **Buildable tiles are far more visible** (stronger highlight) than in the first version.
+
+**Tests actually performed this round (English, live on Vercel):**
+- Full tutorial flow start to finish: district intro, unit-selection coachmark, an intentionally invalid placement (confirmed refused with the explanatory flash message), a valid placement (confirmed the tech sprite walks to the new tower), the wave-launch coachmark, and the post-wave explanation.
+- One full wave played after the tutorial, observing tower fire, distinct incident shapes, and HP sliver bars in motion.
+- A forced quick defeat (no defenses) specifically to see the district damage states: alarm light at critical, crack pattern on fully dark — confirmed visually.
+- Pause overlay, browser resize to mobile portrait (375×812) — confirmed legible and playable.
+
+**Tests actually performed this round (French, live on Vercel, `/fr/`):**
+- The identical tutorial flow, fully translated (including the invalid-placement message "Impossible de construire ici — choisis une case qui brille.") — confirmed step-for-step equivalent to English.
+- A forced quick defeat in French, confirming the same crack-pattern visual and a correctly translated defeat screen ("SECTEUR HORS LIGNE" — Nuit atteinte 1, Incidents neutralisés 0, Quartiers sauvés 2/5, Meilleur score 0).
+- Layout re-checked at four sizes: mobile portrait (375×812, build-phase screen), desktop (1920×1080, start screen), and landscape phone (812×375, start screen) — title, briefing, and both buttons fully visible and unclipped at every size checked.
+
+**Honestly NOT tested this round (stated explicitly, not glossed over):**
+- **A full 25-wave victory was not replayed with the new visual system**, in either language, this round. The win/loss logic itself is unchanged from the version that already completed two full real victories (see "Round 1" above), so the *rules* are proven — but the new rendering layer running for all 25 waves start-to-finish has not been freshly observed.
+- **Tablet (768×1024) and short-desktop (1024×768) sizes were not re-checked with the new visuals this round** — only mobile portrait, landscape phone, and large desktop were. These sizes were confirmed clean with the *previous* visual system in Round 1; they should still be fine (no layout code changed, only canvas-drawn content), but this has not been freshly re-observed.
+- **A click at the landscape-phone size (812×375) did not register in this preview tool** during this round's testing, the same transient input-timing quirk already flagged in Round 1 for the tablet preset — the layout itself was confirmed correct by screenshot, but the button was not click-verified at that exact size this round.
+- **Real touch input on physical hardware** remains untested, as in Round 1.
+- **This round's `index.html` and `fr/index.html` were deployed directly to Vercel via the CLI and have not yet been committed to this Git repository at the time of writing** — see the commit that accompanies this README update for when that gap was closed.
+
+No claim above says "everything works," "fully tested," or "no errors" — only the specific things that were actually observed are reported as observed.
